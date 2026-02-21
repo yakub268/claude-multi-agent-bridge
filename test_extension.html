@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension Test - Claude Bridge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Consolas', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 40px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #252526;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        h1 { color: #4ec9b0; margin-bottom: 20px; }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.success { background: #1e3a1e; color: #6cc24a; }
+        .status.error { background: #3a1e1e; color: #f48771; }
+        .status.warning { background: #3a3a1e; color: #dcdcaa; }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        button:hover { background: #1177bb; }
+        .log {
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-left: 3px solid #4ec9b0;
+            background: #2d2d30;
+        }
+        .log-entry.sent { border-left-color: #569cd6; }
+        .log-entry.received { border-left-color: #4ec9b0; }
+        .log-entry.error { border-left-color: #f48771; }
+        .timestamp { color: #858585; font-size: 11px; }
+        .code {
+            background: #1e1e1e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ce9178;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Claude Bridge Extension Test</h1>
+
+        <div id="status" class="status warning">
+            ⏳ Checking extension connection...
+        </div>
+
+        <div>
+            <button onclick="testExtension()">🧪 Test Extension</button>
+            <button onclick="sendToCode()">📤 Send to Code</button>
+            <button onclick="sendToBrowser()">📤 Send to Browser</button>
+            <button onclick="checkBusStatus()">📊 Check Bus Status</button>
+            <button onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const BUS_URL = 'http://localhost:5001';
+        let lastTimestamp = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `
+                <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+                ${message}
+            `;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        async function testExtension() {
+            log('🧪 Testing extension...', 'info');
+
+            // Check if message bus is reachable
+            try {
+                const response = await fetch(`${BUS_URL}/api/status`);
+                const data = await response.json();
+
+                if (data.status === 'running') {
+                    log(`✅ Message bus connected (${data.message_count} messages)`, 'received');
+                    updateStatus('✅ Message bus connected', 'success');
+
+                    // Send test message
+                    await fetch(`${BUS_URL}/api/send`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            from: 'test_page',
+                            to: 'all',
+                            type: 'test',
+                            payload: {
+                                message: 'Test from HTML page',
+                                timestamp: new Date().toISOString()
+                            }
+                        })
+                    });
+                    log('📤 Test message sent to bus', 'sent');
+                } else {
+                    throw new Error('Bus not running');
+                }
+            } catch (err) {
+                log(`❌ Message bus unreachable: ${err.message}`, 'error');
+                updateStatus('❌ Message bus offline', 'error');
+            }
+        }
+
+        async function sendToCode() {
+            try {
+                const response = await fetch(`${BUS_URL}/api/send`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        from: 'test_page',
+                        to: 'code',
+                        type: 'message',
+                        payload: {
+                            text: 'Hello from test page!',
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+                const data = await response.json();
+                log(`📤 Message sent to Code CLI (ID: ${data.message_id})`, 'sent');
+            } catch (err) {
+                log(`❌ Failed to send: ${err.message}`, 'error');
+            }
+        }
+
+        async function sendToBrowser() {
+            try {
+                const response = await fetch(`${BUS_URL}/api/send`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        from: 'test_page',
+                        to: 'browser',
+                        type: 'test',
+                        payload: {
+                            message: 'Test message to browser extension',
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+                const data = await response.json();
+                log(`📤 Message sent to Browser (ID: ${data.message_id})`, 'sent');
+            } catch (err) {
+                log(`❌ Failed to send: ${err.message}`, 'error');
+            }
+        }
+
+        async function checkBusStatus() {
+            try {
+                const response = await fetch(`${BUS_URL}/api/status`);
+                const data = await response.json();
+                log(`📊 Status: ${data.status}, Messages: ${data.message_count}, Clients: ${data.clients.join(', ')}`, 'info');
+            } catch (err) {
+                log(`❌ Status check failed: ${err.message}`, 'error');
+            }
+        }
+
+        async function pollMessages() {
+            try {
+                const params = new URLSearchParams({to: 'test_page'});
+                if (lastTimestamp) {
+                    params.append('since', lastTimestamp);
+                }
+
+                const response = await fetch(`${BUS_URL}/api/messages?${params}`);
+                const data = await response.json();
+
+                for (const msg of data.messages || []) {
+                    lastTimestamp = msg.timestamp;
+                    log(`📬 Received from <span class="code">${msg.from}</span>: ${msg.type} - ${JSON.stringify(msg.payload)}`, 'received');
+                }
+            } catch (err) {
+                // Silent fail for polling
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🗑️ Log cleared', 'info');
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            setTimeout(testExtension, 500);
+
+            // Poll every 2 seconds
+            setInterval(pollMessages, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+/**
+ * Content Script - Injected into claude.ai pages
+ * Bridges between page DOM and extension background
+ */
+
+const BUS_URL = 'http://localhost:5001';
+const CLIENT_ID = 'browser';
+
+console.log('[Claude Bridge] Content script loaded');
+
+// Inject message bus into page context
+const script = document.createElement('script');
+script.textContent = `
+  (function() {
+    window.claudeBridge = {
+      // Send message to bus
+      send: async function(to, type, payload) {
+        try {
+          const response = await fetch('${BUS_URL}/api/send', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              from: '${CLIENT_ID}',
+              to: to,
+              type: type,
+              payload: payload
+            })
+          });
+          return await response.json();
+        } catch (err) {
+          console.error('[Claude Bridge] Send failed:', err);
+          return {status: 'error', error: err.message};
+        }
+      },
+
+      // Get text from input box
+      getInputText: function() {
+        const input = document.querySelector('[contenteditable="true"]');
+        return input ? input.textContent : '';
+      },
+
+      // Set text in input box
+      setInputText: function(text) {
+        const input = document.querySelector('[contenteditable="true"]');
+        if (input) {
+          input.textContent = text;
+          input.dispatchEvent(new Event('input', {bubbles: true}));
+          return true;
+        }
+        return false;
+      },
+
+      // Submit current input
+      submitInput: function() {
+        const submitBtn = document.querySelector('button[aria-label*="Send"]');
+        if (submitBtn && !submitBtn.disabled) {
+          submitBtn.click();
+          return true;
+        }
+        return false;
+      },
+
+      // Get last assistant response
+      getLastResponse: function() {
+        const responses = document.querySelectorAll('[data-testid="user-message"]');
+        if (responses.length > 0) {
+          const lastResponse = responses[responses.length - 1];
+          return lastResponse.textContent;
+        }
+        return null;
+      }
+    };
+
+    console.log('[Claude Bridge] API injected into window.claudeBridge');
+  })();
+`;
+document.documentElement.appendChild(script);
+script.remove();
+
+// Poll for messages from bus
+let lastTimestamp = null;
+
+async function pollMessages() {
+  try {
+    const params = new URLSearchParams({to: CLIENT_ID});
+    if (lastTimestamp) {
+      params.append('since', lastTimestamp);
+    }
+
+    const response = await fetch(`${BUS_URL}/api/messages?${params}`);
+    const data = await response.json();
+
+    for (const msg of data.messages || []) {
+      lastTimestamp = msg.timestamp;
+      handleMessage(msg);
+    }
+  } catch (err) {
+    // Silently fail if bus is down
+  }
+
+  setTimeout(pollMessages, 1000);  // Poll every second
+}
+
+// handleMessage now defined above with response tracking
+
+// Start polling
+pollMessages();
+
+console.log('[Claude Bridge] Polling started');
+console.log('[Claude Bridge] Response observer active');
+
+// Listen for commands from injected script
+window.addEventListener('message', async (event) => {
+  if (event.data.type === 'claude-bridge-command') {
+    const {action, text} = event.data;
+
+    // Execute in page context
+    const result = await new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.textContent = `
+        (function() {
+          const result = window.claudeBridge.${action}(${text ? JSON.stringify(text) : ''});
+          window.postMessage({type: 'claude-bridge-result', result: result}, '*');
+        })();
+      `;
+      document.documentElement.appendChild(script);
+      script.remove();
+
+      const listener = (e) => {
+        if (e.data.type === 'claude-bridge-result') {
+          window.removeEventListener('message', listener);
+          resolve(e.data.result);
+        }
+      };
+      window.addEventListener('message', listener);
+    });
+
+    console.log('[Claude Bridge] Command result:', result);
+  }
+});
+
+// Response detection and auto-send
+let isWaitingForResponse = false;
+let lastSentPrompt = null;
+
+// Observe DOM for new Claude responses
+const responseObserver = new MutationObserver((mutations) => {
+  if (!isWaitingForResponse) return;
+
+  // Check if Claude finished responding
+  const thinkingIndicators = document.querySelectorAll('[role="status"]');
+  const isThinking = Array.from(thinkingIndicators).some(el =>
+    el.textContent.toLowerCase().includes('thinking') ||
+    el.textContent.toLowerCase().includes('writing')
+  );
+
+  if (!isThinking) {
+    // Claude finished - extract and send response
+    setTimeout(() => {
+      extractAndSendResponse();
+    }, 500); // Wait for DOM to settle
+  }
+});
+
+function extractAndSendResponse() {
+  // Get all message elements
+  const messages = document.querySelectorAll('[data-testid="user-message"]');
+
+  if (messages.length === 0) {
+    isWaitingForResponse = false;
+    return;
+  }
+
+  // Find the last Claude response (not user message)
+  let lastClaudeResponse = null;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+
+    // Check if it's a Claude message (has thinking/response content)
+    const hasThinking = msg.querySelector('[role="status"]');
+    const hasParagraphs = msg.querySelectorAll('p').length > 0;
+
+    // Skip if it's a user message (has retry/edit buttons in specific way)
+    const isUserMsg = msg.querySelector('button[aria-label*="Edit"]') &&
+                      !hasThinking;
+
+    if (!isUserMsg && hasParagraphs) {
+      lastClaudeResponse = msg;
+      break;
+    }
+  }
+
+  if (lastClaudeResponse) {
+    // Extract text from paragraphs
+    const paragraphs = lastClaudeResponse.querySelectorAll('p');
+    const responseText = Array.from(paragraphs)
+      .map(p => p.textContent.trim())
+      .filter(t => t && t !== 'undefined' && !t.includes('Thinking about'))
+      .join('\n\n');
+
+    if (responseText && responseText.length > 0) {
+      console.log('[Claude Bridge] Extracted response:', responseText.substring(0, 100) + '...');
+
+      // Send to message bus
+      fetch(`${BUS_URL}/api/send`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          from: CLIENT_ID,
+          to: 'all',
+          type: 'claude_response',
+          payload: {
+            prompt: lastSentPrompt,
+            response: responseText,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).then(() => {
+        console.log('[Claude Bridge] Response sent to message bus');
+      }).catch(err => {
+        console.error('[Claude Bridge] Failed to send response:', err);
+      });
+    }
+  }
+
+  isWaitingForResponse = false;
+  lastSentPrompt = null;
+}
+
+// Start observing the document for changes
+responseObserver.observe(document.body, {
+  childList: true,
+  subtree: true,
+  characterData: true
+});
+
+// Modify handleMessage to track when we send prompts
+function handleMessage(msg) {
+  console.log('[Claude Bridge] Received:', msg);
+
+  // Inject message into page context
+  const event = new CustomEvent('claude-bridge-message', {
+    detail: msg
+  });
+  window.dispatchEvent(event);
+
+  // Handle commands
+  if (msg.type === 'command') {
+    const {action, text} = msg.payload;
+
+    if (action === 'run_prompt') {
+      lastSentPrompt = text;
+      isWaitingForResponse = true;
+
+      window.postMessage({
+        type: 'claude-bridge-command',
+        action: 'setInput',
+        text: text
+      }, '*');
+
+      setTimeout(() => {
+        window.postMessage({
+          type: 'claude-bridge-command',
+          action: 'submit'
+        }, '*');
+      }, 100);
+    }
+  }
+}
