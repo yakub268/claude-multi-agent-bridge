@@ -316,10 +316,14 @@ def main():
     print("  ✅ Extension loaded and working")
     print()
 
-    response = input("Ready to start? (y/n): ")
-    if response.lower() != 'y':
-        print("Aborted.")
-        return
+    # Check for --auto flag
+    if '--auto' not in sys.argv and '-y' not in sys.argv:
+        response = input("Ready to start? (y/n): ")
+        if response.lower() != 'y':
+            print("Aborted.")
+            return
+    else:
+        print("Running in auto mode...")
 
     test = StressTest()
     test.results['start_time'] = time.time()

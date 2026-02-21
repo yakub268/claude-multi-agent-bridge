@@ -20,3 +20,8 @@ Thumbs.db
 
 # Playwright
 .playwright-mcp/
+
+# Test outputs
+validation_results.txt
+*.db
+*.db-journal
