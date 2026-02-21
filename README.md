@@ -7,6 +7,19 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue)]()
 [![Chrome](https://img.shields.io/badge/Chrome-Extension-orange)]()
 
+---
+
+## 📧 Need Help Implementing This?
+
+I offer consulting for multi-agent systems:
+- **Custom implementation** for your use case
+- **Production deployment** and scaling
+- **Team training** and architecture design
+
+**Packages start at $3,500** | [See pricing](launch/consulting_packages.md) | DM me on [LinkedIn](https://linkedin.com/in/yourprofile) or open an issue
+
+---
+
 ![Demo](demo_workflow.gif)
 
 **The problem:** You're coding in Claude Code while researching in Browser Claude. You copy-paste between them. It's 2026.
