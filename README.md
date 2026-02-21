@@ -7,6 +7,8 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue)]()
 [![Chrome](https://img.shields.io/badge/Chrome-Extension-orange)]()
 
+![Demo](demo_workflow.gif)
+
 **The problem:** You're coding in Claude Code while researching in Browser Claude. You copy-paste between them. It's 2026.
 
 **The solution:** Direct AI-to-AI communication. Send commands from Code → Browser Claude types it → Response comes back automatically.
