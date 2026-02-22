@@ -357,6 +357,14 @@ class EnhancedCollaborationRoom:
         if client_id not in self.members:
             raise ValueError(f"Client {client_id} not in room")
 
+        # File size limit: 10MB
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+        if len(file_content) > MAX_FILE_SIZE:
+            raise ValueError(
+                f"File size {len(file_content)} bytes exceeds maximum allowed size of {MAX_FILE_SIZE} bytes (10MB). "
+                f"File: {file_name}"
+            )
+
         file_id = hashlib.sha256(file_content).hexdigest()[:16]
 
         shared_file = SharedFile(

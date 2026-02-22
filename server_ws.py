@@ -5,8 +5,10 @@ Real-time bi-directional communication (upgrade from polling)
 """
 import json
 import time
+import uuid
 import asyncio
 import logging
+import threading
 from datetime import datetime, timezone
 from collections import defaultdict, deque
 from pathlib import Path
@@ -77,6 +79,10 @@ sock = Sock(app)
 message_store = deque(maxlen=500)  # Keep last 500 messages
 message_ttl = 300  # 5 minutes
 
+# Connection limits (prevent resource exhaustion)
+MAX_CONNECTIONS = int(os.getenv('MAX_CONNECTIONS', '1000'))  # Total connections
+MAX_CONNECTIONS_PER_CLIENT = int(os.getenv('MAX_CONNECTIONS_PER_CLIENT', '10'))  # Per client ID
+
 # Start background cleanup task for message TTL
 def cleanup_old_messages():
     """Background task to remove expired messages"""
@@ -107,10 +113,41 @@ def cleanup_old_messages():
         except Exception as e:
             logger.error(f"Message cleanup error: {e}")
 
-# Start cleanup thread
-import threading
-cleanup_thread = threading.Thread(target=cleanup_old_messages, daemon=True)
-cleanup_thread.start()
+def cleanup_old_acks():
+    """Background task to remove expired pending acks"""
+    ack_ttl = 600  # 10 minutes - acks shouldn't be pending this long
+    while True:
+        time.sleep(120)  # Run every 2 minutes
+        try:
+            now = datetime.now(timezone.utc)
+            expired = []
+
+            for msg_id, ack_data in list(pending_acks.items()):
+                try:
+                    ack_time = datetime.fromisoformat(ack_data['timestamp'].replace('Z', '+00:00'))
+                    age_seconds = (now - ack_time).total_seconds()
+                    if age_seconds > ack_ttl:
+                        expired.append(msg_id)
+                except Exception:
+                    pass
+
+            for msg_id in expired:
+                try:
+                    del pending_acks[msg_id]
+                except KeyError:
+                    pass  # Already removed
+
+            if expired:
+                logger.debug(f"Cleaned up {len(expired)} expired pending acks")
+        except Exception as e:
+            logger.error(f"Pending acks cleanup error: {e}")
+
+# Start cleanup threads
+cleanup_msg_thread = threading.Thread(target=cleanup_old_messages, daemon=True)
+cleanup_msg_thread.start()
+
+cleanup_ack_thread = threading.Thread(target=cleanup_old_acks, daemon=True)
+cleanup_ack_thread.start()
 
 # WebSocket connections by client
 ws_connections = defaultdict(set)  # client_id -> set of websocket connections
@@ -155,6 +192,30 @@ def websocket_handler(ws, client_id):
     connection_id = str(uuid.uuid4())
 
     logger.info(f"WebSocket connection opened: {client_id} (conn_id: {connection_id[:8]})")
+
+    # Check connection limits (prevent resource exhaustion)
+    total_connections = sum(len(conns) for conns in ws_connections.values())
+    client_connections = len(ws_connections[client_id])
+
+    if total_connections >= MAX_CONNECTIONS:
+        logger.warning(f"Connection limit reached ({total_connections}/{MAX_CONNECTIONS}), rejecting {client_id}")
+        ws.send(json.dumps({
+            'type': 'error',
+            'error': f'Server connection limit reached ({MAX_CONNECTIONS} connections)',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }))
+        ws.close()
+        return
+
+    if client_connections >= MAX_CONNECTIONS_PER_CLIENT:
+        logger.warning(f"Per-client connection limit reached for {client_id} ({client_connections}/{MAX_CONNECTIONS_PER_CLIENT})")
+        ws.send(json.dumps({
+            'type': 'error',
+            'error': f'Connection limit reached for client ({MAX_CONNECTIONS_PER_CLIENT} connections per client)',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }))
+        ws.close()
+        return
 
     # Register connection with unique ID
     ws_connections[client_id].add(ws)
@@ -316,8 +377,8 @@ def handle_send_message(from_client, message_data):
         logger.error(f"No 'to' field in message from {from_client}")
         return
 
-    # Create message
-    msg_id = f"msg-{int(time.time()*1000)}"
+    # Create message (using UUID to prevent collisions)
+    msg_id = f"msg-{uuid.uuid4().hex[:16]}"
     timestamp = datetime.now(timezone.utc).isoformat()
 
     msg = {
@@ -398,11 +459,12 @@ def handle_message_ack(client_id, ack_data):
 def http_send():
     """HTTP endpoint for sending messages (backward compatible)"""
     try:
-        # Rate limiting
-        if rate_limiter:
-            client_id = request.headers.get('X-Client-ID', request.remote_addr)
-            if not rate_limiter.is_allowed(client_id):
-                return jsonify({'error': 'Rate limit exceeded'}), 429
+        # Rate limiting - ALWAYS applied (not just when client provides header)
+        client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+        if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+            logger.warning(f"Rate limit exceeded for {client_identifier}")
+            return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
 
         # Authentication (optional)
         if token_auth:
@@ -423,8 +485,8 @@ def http_send():
         if not from_client or not to_client:
             return jsonify({'error': 'Missing from or to'}), 400
 
-        # Create message
-        msg_id = f"msg-{int(time.time()*1000)}"
+        # Create message (using UUID to prevent collisions)
+        msg_id = f"msg-{uuid.uuid4().hex[:16]}"
         timestamp = datetime.now(timezone.utc).isoformat()
         send_time = time.time()
 
@@ -467,6 +529,13 @@ def http_send():
 def http_get_messages():
     """HTTP endpoint for getting messages (backward compatible with polling)"""
     try:
+        # Rate limiting
+        client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+        if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+            logger.warning(f"Rate limit exceeded for {client_identifier}")
+            return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
+
         to_client = request.args.get('to')
         since = request.args.get('since')
         limit = int(request.args.get('limit', 100))
@@ -499,6 +568,13 @@ def http_get_messages():
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Get server status and metrics"""
+    # Rate limiting
+    client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+    if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+        logger.warning(f"Rate limit exceeded for {client_identifier}")
+        return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
+
     # Calculate messages per minute
     if metrics['last_message_time']:
         last_time = datetime.fromisoformat(metrics['last_message_time'].replace('Z', '+00:00'))
@@ -541,6 +617,13 @@ def get_status():
 @app.route('/api/clear', methods=['POST'])
 def clear_messages():
     """Clear message store"""
+    # Rate limiting
+    client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+    if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+        logger.warning(f"Rate limit exceeded for {client_identifier}")
+        return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
+
     message_store.clear()
     pending_acks.clear()
     logger.info("Message store cleared")
@@ -575,6 +658,13 @@ def prometheus_metrics():
 @app.route('/api/collab/rooms', methods=['GET'])
 def list_collab_rooms():
     """List all collaboration rooms"""
+    # Rate limiting
+    client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+    if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+        logger.warning(f"Rate limit exceeded for {client_identifier}")
+        return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
+
     if not collab_bridge:
         return jsonify({'error': 'Collaboration not available'}), 503
 
@@ -593,6 +683,13 @@ def list_collab_rooms():
 @app.route('/api/collab/rooms/<room_id>', methods=['GET'])
 def get_collab_room(room_id):
     """Get room details"""
+    # Rate limiting
+    client_identifier = request.headers.get('X-Client-ID') or request.remote_addr
+
+    if rate_limiter and not rate_limiter.is_allowed(client_identifier):
+        logger.warning(f"Rate limit exceeded for {client_identifier}")
+        return jsonify({'error': 'Rate limit exceeded', 'retry_after': 60}), 429
+
     if not collab_bridge:
         return jsonify({'error': 'Collaboration not available'}), 503
 
@@ -610,6 +707,57 @@ def get_collab_room(room_id):
         logger.error(f"Error getting room {room_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+# ============================================================================
+# Graceful Shutdown
+# ============================================================================
+
+import signal
+import sys
+
+def graceful_shutdown(signum, frame):
+    """Handle graceful shutdown on SIGTERM/SIGINT"""
+    logger.info("="*70)
+    logger.info("🛑 SHUTTING DOWN GRACEFULLY")
+    logger.info("="*70)
+
+    # Close all WebSocket connections
+    logger.info(f"Closing {sum(len(conns) for conns in ws_connections.values())} WebSocket connections...")
+    for client_id, connections in list(ws_connections.items()):
+        for ws in list(connections):
+            try:
+                ws.send(json.dumps({
+                    'type': 'server_shutdown',
+                    'message': 'Server is shutting down',
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                }))
+                ws.close()
+            except Exception as e:
+                logger.debug(f"Error closing connection for {client_id}: {e}")
+
+    # Close collaboration rooms
+    if collab_bridge:
+        logger.info(f"Closing {len(collab_bridge.hub.rooms)} collaboration rooms...")
+        for room_id in list(collab_bridge.hub.rooms.keys()):
+            try:
+                collab_bridge.hub.close_room(room_id)
+            except Exception as e:
+                logger.debug(f"Error closing room {room_id}: {e}")
+
+    # Close Redis connection
+    if redis_backend:
+        logger.info("Closing Redis connection...")
+        try:
+            redis_backend.close()
+        except Exception as e:
+            logger.debug(f"Error closing Redis: {e}")
+
+    logger.info("✅ Shutdown complete")
+    sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGTERM, graceful_shutdown)
+signal.signal(signal.SIGINT, graceful_shutdown)
 
 # ============================================================================
 # Main
