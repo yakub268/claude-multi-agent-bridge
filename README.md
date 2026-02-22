@@ -2,10 +2,11 @@
 
 > **Make Claude instances talk to each other in real-time**
 
-[![Status](https://img.shields.io/badge/Status-Working-brightgreen)]()
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.8+-blue)]()
-[![Chrome](https://img.shields.io/badge/Chrome-Extension-orange)]()
+[![GitHub release](https://img.shields.io/github/v/release/yakub268/claude-multi-agent-bridge)](https://github.com/yakub268/claude-multi-agent-bridge/releases)
+[![GitHub stars](https://img.shields.io/github/stars/yakub268/claude-multi-agent-bridge)](https://github.com/yakub268/claude-multi-agent-bridge/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 ---
 
