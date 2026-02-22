@@ -22,6 +22,13 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+class ClaudeModel(Enum):
+    """Claude model selection"""
+    HAIKU = "haiku"  # Fast, cheap for simple tasks
+    SONNET = "sonnet"  # Balanced for most coding
+    OPUS = "opus"  # Best for complex reasoning
+
+
 class CollabStrategy(Enum):
     """Collaboration strategy"""
     SINGLE_CLAUDE = "single"  # No collaboration needed
@@ -78,9 +85,11 @@ class RoleAssignment:
     """Role for a Claude in the team"""
     role: str
     client_id: str
+    model: ClaudeModel  # Which model to use
     vote_weight: float
     responsibilities: List[str]
     files_assigned: List[str]
+    use_planning_mode: bool  # Whether this Claude should use planning mode
 
 
 @dataclass
@@ -99,6 +108,10 @@ class CollaborationPlan:
     phases: List[Dict[str, any]]
     estimated_cost_usd: float
     estimated_duration_hours: float
+
+    # Model decisions
+    coordinator_model: ClaudeModel
+    coordinator_uses_planning: bool
 
     # Reasoning
     reasoning: str
@@ -306,62 +319,179 @@ class MLOrchestrator:
 
             return (0, num_claudes)
 
+    def select_model(self, role: str, features: TaskFeatures) -> ClaudeModel:
+        """
+        Select optimal Claude model based on role and task complexity
+
+        Decision matrix:
+        - Opus: Complex reasoning, architecture decisions, ambiguous requirements
+        - Sonnet: Standard development, most coding tasks
+        - Haiku: Simple tasks, testing, documentation
+
+        Args:
+            role: Role in team
+            features: Task features
+
+        Returns:
+            ClaudeModel to use
+        """
+        # Coordinator: Use best model if task is complex
+        if role == "coordinator":
+            if features.estimated_files > 30 or features.num_subtasks > 10:
+                return ClaudeModel.OPUS  # Complex coordination needs Opus
+            elif features.estimated_files > 10:
+                return ClaudeModel.SONNET
+            else:
+                return ClaudeModel.SONNET  # Coordinator always at least Sonnet
+
+        # Reviewer: Use Sonnet or Opus for quality
+        elif role == "reviewer":
+            if features.estimated_loc > 5000:
+                return ClaudeModel.OPUS  # Large codebase needs best reviewer
+            else:
+                return ClaudeModel.SONNET
+
+        # Tester: Haiku sufficient for most testing
+        elif role == "tester":
+            if features.estimated_files > 20:
+                return ClaudeModel.SONNET  # Complex test suite
+            else:
+                return ClaudeModel.HAIKU
+
+        # Coder: Sonnet for most, Haiku for simple
+        elif role == "coder":
+            if features.estimated_files < 5 and features.estimated_loc < 500:
+                return ClaudeModel.HAIKU  # Simple implementation
+            else:
+                return ClaudeModel.SONNET  # Standard coding
+
+        # Default: Sonnet
+        return ClaudeModel.SONNET
+
+    def should_use_planning_mode(self, role: str, features: TaskFeatures) -> bool:
+        """
+        Decide if planning mode should be used for this role
+
+        Planning mode is beneficial when:
+        - Task is large/complex (needs design before implementation)
+        - Multiple architectural choices exist
+        - Cross-file dependencies are complex
+        - Role is coordinator making architectural decisions
+
+        Args:
+            role: Role in team
+            features: Task features
+
+        Returns:
+            True if planning mode recommended
+        """
+        # Coordinator: Use planning if task warrants it
+        if role == "coordinator":
+            # Use planning mode if:
+            return (
+                features.estimated_files > 15  # Large project
+                or features.num_subtasks > 8   # Complex breakdown
+                or features.dependency_depth > 3  # Deep dependencies
+                or features.estimated_hours > 4  # Long task
+            )
+
+        # Reviewer: Use planning for comprehensive review strategy
+        elif role == "reviewer":
+            return features.estimated_files > 20  # Only for large reviews
+
+        # Coder: Use planning if assigned many files
+        elif role == "coder":
+            # Coders don't usually need planning mode unless task is huge
+            return features.estimated_files > 50
+
+        # Tester: Generally no planning mode needed
+        elif role == "tester":
+            return features.estimated_files > 30  # Only for massive test suites
+
+        return False
+
     def assign_roles(self, features: TaskFeatures, num_claudes: int) -> List[RoleAssignment]:
         """
         Assign roles to team members based on task needs
+        Now includes model selection and planning mode decision
         """
         roles = []
 
         if num_claudes == 1:
+            model = self.select_model("coordinator", features)
+            use_planning = self.should_use_planning_mode("coordinator", features)
+
             roles.append(RoleAssignment(
                 role="coordinator",
                 client_id="claude-main",
+                model=model,
                 vote_weight=2.0,
                 responsibilities=["all tasks"],
-                files_assigned=[]
+                files_assigned=[],
+                use_planning_mode=use_planning
             ))
             return roles
 
         # Always have coordinator
+        coord_model = self.select_model("coordinator", features)
+        coord_planning = self.should_use_planning_mode("coordinator", features)
+
         roles.append(RoleAssignment(
             role="coordinator",
             client_id="claude-coordinator",
+            model=coord_model,
             vote_weight=2.0,
             responsibilities=["orchestration", "integration", "decisions"],
-            files_assigned=[]
+            files_assigned=[],
+            use_planning_mode=coord_planning
         ))
 
         remaining = num_claudes - 1
 
         # Assign based on task needs
         if features.needs_code_review and remaining > 0:
+            model = self.select_model("reviewer", features)
+            use_planning = self.should_use_planning_mode("reviewer", features)
+
             roles.append(RoleAssignment(
                 role="reviewer",
                 client_id="claude-reviewer",
+                model=model,
                 vote_weight=1.5,
                 responsibilities=["code review", "quality assurance", "veto power"],
-                files_assigned=[]
+                files_assigned=[],
+                use_planning_mode=use_planning
             ))
             remaining -= 1
 
         if features.needs_testing and remaining > 0:
+            model = self.select_model("tester", features)
+            use_planning = self.should_use_planning_mode("tester", features)
+
             roles.append(RoleAssignment(
                 role="tester",
                 client_id="claude-tester",
+                model=model,
                 vote_weight=1.0,
                 responsibilities=["testing", "QA", "bug reporting"],
-                files_assigned=[]
+                files_assigned=[],
+                use_planning_mode=use_planning
             ))
             remaining -= 1
 
         # Assign coders for remaining slots
         for i in range(remaining):
+            model = self.select_model("coder", features)
+            use_planning = self.should_use_planning_mode("coder", features)
+
             roles.append(RoleAssignment(
                 role="coder",
                 client_id=f"claude-coder-{i+1}",
+                model=model,
                 vote_weight=1.0,
                 responsibilities=[f"implementation {i+1}"],
-                files_assigned=[]
+                files_assigned=[],
+                use_planning_mode=use_planning
             ))
 
         return roles
@@ -409,7 +539,10 @@ class MLOrchestrator:
         cost_usd = self._estimate_cost(features, strategy, num_agents, num_claudes)
 
         # Step 8: Generate reasoning
-        reasoning = self._generate_reasoning(features, strategy, num_agents, num_claudes)
+        reasoning = self._generate_reasoning(features, strategy, num_agents, num_claudes, roles)
+
+        # Extract coordinator info
+        coordinator = next((r for r in roles if r.role == "coordinator"), roles[0])
 
         return CollaborationPlan(
             strategy=strategy,
@@ -421,6 +554,8 @@ class MLOrchestrator:
             phases=phases,
             estimated_cost_usd=cost_usd,
             estimated_duration_hours=features.estimated_hours,
+            coordinator_model=coordinator.model,
+            coordinator_uses_planning=coordinator.use_planning_mode,
             reasoning=reasoning
         )
 
@@ -489,7 +624,7 @@ class MLOrchestrator:
             return features.estimated_hours * num_claudes * w['cost_per_claude_hour']
 
     def _generate_reasoning(self, features: TaskFeatures, strategy: CollabStrategy,
-                           num_agents: int, num_claudes: int) -> str:
+                           num_agents: int, num_claudes: int, roles: List[RoleAssignment] = None) -> str:
         """Generate human-readable reasoning"""
         lines = []
 
@@ -511,6 +646,22 @@ class MLOrchestrator:
             lines.append(f"  ✓ Use {num_claudes} Claude instances")
             lines.append(f"  ✓ Context size ({features.estimated_context_tokens:,} tokens) requires splitting")
             lines.append(f"  ✓ Parallelization score ({features.parallelization_score:.1%}) supports team work")
+
+        # Add model selection reasoning
+        if roles:
+            lines.append("")
+            lines.append("Model Selection:")
+            for role in roles:
+                planning_note = " (with planning mode)" if role.use_planning_mode else ""
+                lines.append(f"  - {role.role}: {role.model.value.upper()}{planning_note}")
+
+            # Explain planning mode decision
+            coord = next((r for r in roles if r.role == "coordinator"), None)
+            if coord and coord.use_planning_mode:
+                lines.append("")
+                lines.append("Planning Mode Enabled:")
+                lines.append("  ✓ Task complexity warrants architecture planning")
+                lines.append("  ✓ Coordinator will design approach before implementation")
 
         return "\n".join(lines)
 

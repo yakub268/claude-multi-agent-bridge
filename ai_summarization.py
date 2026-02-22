@@ -197,26 +197,66 @@ Format your response as JSON:
 }}"""
 
         try:
-            # Use OpenAI Bridge MCP (if available)
-            # This would be called via the MCP in the real implementation
-            # For now, return placeholder that indicates AI would be used
+            # Use OpenAI Bridge MCP for real AI summarization
+            import sys
+            import os
 
-            # In real implementation:
-            # response = mcp__openai_bridge__openai_chat_json(prompt=prompt)
-            # return json.loads(response)
+            # Try to use openai-bridge MCP if available
+            try:
+                # Import MCP function directly - available in Claude Code environment
+                from mcp import openai_chat_json
 
-            # Placeholder for demonstration
-            summary_text = self._extract_simple_summary(messages)
-            decisions = self._extract_decisions(messages)
-            actions = self._extract_action_items(messages)
+                response = openai_chat_json(
+                    prompt=prompt,
+                    model="gpt-4o-mini",  # Cost-effective for summaries
+                    max_tokens=800,
+                    temperature=0.3  # Lower temperature for factual summaries
+                )
 
-            logger.info(f"Generated AI summary for {len(messages)} messages in channel '{channel}'")
+                # Parse JSON response
+                result = json.loads(response) if isinstance(response, str) else response
 
-            return {
-                'summary': f"[AI Summary] {summary_text}",
-                'decisions': decisions,
-                'action_items': actions
-            }
+                logger.info(f"✅ Generated AI summary using GPT-4o-mini for {len(messages)} messages in channel '{channel}'")
+
+                return {
+                    'summary': result.get('summary', ''),
+                    'decisions': result.get('decisions', []),
+                    'action_items': result.get('action_items', [])
+                }
+
+            except ImportError:
+                # MCP not available, try direct OpenAI API
+                logger.warning("OpenAI MCP not available, trying direct API")
+
+                import openai
+                api_key = os.getenv('OPENAI_API_KEY')
+
+                if not api_key:
+                    logger.warning("No OpenAI API key found, falling back to simple extraction")
+                    raise ValueError("No API key")
+
+                client = openai.OpenAI(api_key=api_key)
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that summarizes collaboration discussions. Always respond with valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"},
+                    max_tokens=800,
+                    temperature=0.3
+                )
+
+                result = json.loads(response.choices[0].message.content)
+
+                logger.info(f"✅ Generated AI summary using OpenAI API for {len(messages)} messages in channel '{channel}'")
+
+                return {
+                    'summary': result.get('summary', ''),
+                    'decisions': result.get('decisions', []),
+                    'action_items': result.get('action_items', [])
+                }
 
         except Exception as e:
             logger.error(f"AI summarization failed: {e}, falling back to simple extraction")
