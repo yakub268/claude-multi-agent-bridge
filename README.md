@@ -412,19 +412,109 @@ Channel isolation: 100% (no leakage)
 
 ---
 
+## 🎁 Production Features (v1.2.0)
+
+### **Webhooks** - External Notifications
+Get notified in Slack/Discord when events occur:
+
+```python
+from webhooks import WebhookManager, WebhookEvent, SlackWebhook
+
+webhook_mgr = WebhookManager()
+webhook_mgr.start_worker()
+
+# Slack notifications
+SlackWebhook.send(
+    webhook_url="https://hooks.slack.com/...",
+    event=WebhookEvent.MESSAGE_SENT,
+    data={'from': 'code', 'to': 'browser'}
+)
+```
+
+### **Health Checks** - Kubernetes-Ready
+Production-grade health monitoring:
+
+```python
+from health_checks import HealthCheckManager
+
+health = HealthCheckManager(app)
+
+# Endpoints: /health/live, /health/ready, /health/startup
+# Perfect for Kubernetes liveness/readiness probes
+```
+
+### **Message TTL** - Auto-Cleanup
+Automatically expire old messages:
+
+```python
+from message_ttl import MessageTTLManager, StandardPolicies
+
+ttl_mgr = MessageTTLManager()
+ttl_mgr.register_policy(StandardPolicies.get_error_policy())  # 1 hour
+ttl_mgr.start_cleanup_worker()
+```
+
+### **Enhanced Metrics** - Prometheus Export
+Detailed performance metrics with percentiles:
+
+```python
+from enhanced_metrics import MetricsCollector
+
+metrics = MetricsCollector()
+
+# Track latency with P50, P90, P99
+latency = metrics.summary('request_duration_ms')
+latency.observe(45.2)
+
+# Export to Prometheus
+@app.route('/metrics')
+def prometheus():
+    return metrics.get_prometheus_metrics()
+```
+
+### **Server-Sent Events** - Real-Time Streaming
+Stream events to browser without polling:
+
+```javascript
+// Browser client
+const eventSource = new EventSource('/stream/events?client_id=browser-1');
+eventSource.addEventListener('message_received', (e) => {
+    const data = JSON.parse(e.data);
+    console.log('Message:', data);
+});
+```
+
+**See [UPGRADE_GUIDE_V1.2.md](UPGRADE_GUIDE_V1.2.md) for full documentation**
+
+---
+
 ## 🛣️ Roadmap
 
+**v1.1 (Completed):**
+- [x] WebSocket support (replace polling)
+- [x] Message persistence (SQLite)
+- [x] Authentication & rate limiting
+- [x] Priority queue
+- [x] Circuit breaker & retries
+- [x] Message routing
+
+**v1.2 (Completed):**
+- [x] Webhooks (Slack/Discord)
+- [x] Health checks (Kubernetes)
+- [x] Message TTL
+- [x] Enhanced metrics (Prometheus)
+- [x] Server-Sent Events
+
+**v1.3 (Planned):**
 - [ ] Desktop Claude integration (PyAutoGUI MCP)
 - [ ] Multi-tab support (route to specific conversations)
 - [ ] Artifact extraction (get charts, code blocks, etc.)
 - [ ] File upload automation
 - [ ] Project context injection
-- [ ] Streaming responses via SSE
-- [ ] WebSocket support (replace polling)
-- [ ] Message persistence (SQLite)
-- [ ] Authentication & rate limiting
+- [ ] End-to-end encryption
+- [ ] PostgreSQL persistence
+- [ ] React admin dashboard
 - [ ] Firefox & Safari extensions
-- [ ] Claude Desktop native messaging API
 
 ---
 
