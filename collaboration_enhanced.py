@@ -24,6 +24,13 @@ from collections import deque
 from enum import Enum
 from pathlib import Path
 
+# Import persistence layer
+try:
+    from collab_persistence import CollabPersistence
+    PERSISTENCE_ENABLED = True
+except ImportError:
+    PERSISTENCE_ENABLED = False
+
 
 class MemberRole(Enum):
     """Claude member roles"""
@@ -154,7 +161,8 @@ class EnhancedCollaborationRoom:
     - Persistent storage ready
     """
 
-    def __init__(self, room_id: str, topic: str = "General Collaboration"):
+    def __init__(self, room_id: str, topic: str = "General Collaboration",
+                 persistence_enabled: bool = True):
         self.room_id = room_id
         self.topic = topic
         self.members: Dict[str, RoomMember] = {}
@@ -172,6 +180,12 @@ class EnhancedCollaborationRoom:
         # Callbacks
         self.message_callbacks: List[Callable] = []
         self.created_at = datetime.now(timezone.utc)
+
+        # Persistence layer
+        self.persistence = None
+        if persistence_enabled and PERSISTENCE_ENABLED:
+            self.persistence = CollabPersistence()
+            self.persistence.save_room(room_id, topic, self.created_at)
 
     def _create_channel(self, channel_id: str, name: str, topic: str = "") -> CollaborationChannel:
         """Create new channel"""
@@ -236,6 +250,13 @@ class EnhancedCollaborationRoom:
         # Auto-join main channel
         self.join_channel(client_id, "main")
 
+        # Persist member
+        if self.persistence:
+            self.persistence.save_member(
+                self.room_id, client_id, role.value,
+                member.joined_at, vote_weight
+            )
+
         self._broadcast_system_message(
             f"🎉 {client_id} ({role.value}) joined the room"
         )
@@ -299,6 +320,13 @@ class EnhancedCollaborationRoom:
         # Update contribution count
         self.members[from_client].contributions += 1
 
+        # Persist message
+        if self.persistence:
+            self.persistence.save_message(
+                message.id, self.room_id, from_client, text,
+                message.timestamp, msg_type, channel, reply_to
+            )
+
         # Trigger callbacks
         self._trigger_callbacks(message)
 
@@ -337,6 +365,14 @@ class EnhancedCollaborationRoom:
         )
 
         self.files[file_id] = shared_file
+
+        # Persist file
+        if self.persistence:
+            self.persistence.save_file(
+                file_id, self.room_id, file_name, client_id,
+                shared_file.uploaded_at, len(file_content),
+                content_type, file_content, channel
+            )
 
         # Announce upload
         self.send_message(
@@ -506,14 +542,22 @@ class EnhancedCollaborationRoom:
             msg_type="decision"
         )
 
-        self.decisions.append(EnhancedDecision(
+        enhanced_decision = EnhancedDecision(
             id=msg.id,
             text=decision,
             proposed_by=from_client,
             proposed_at=msg.timestamp,
             vote_type=vote_type,
             required_votes=required_votes
-        ))
+        )
+        self.decisions.append(enhanced_decision)
+
+        # Persist decision
+        if self.persistence:
+            self.persistence.save_decision(
+                msg.id, self.room_id, decision, from_client,
+                msg.timestamp, vote_type.value, required_votes
+            )
 
         return msg.id
 
@@ -539,6 +583,12 @@ class EnhancedCollaborationRoom:
         if veto:
             decision.vetoed_by.add(voter)
             decision.vetoed = True
+
+            # Persist vote
+            if self.persistence:
+                self.persistence.save_vote(decision_id, voter, approve=False, veto=True)
+                self.persistence.update_decision_status(decision_id, approved=False, vetoed=True)
+
             self._broadcast_system_message(
                 f"🚫 {voter} vetoed decision: {decision.text}"
             )
@@ -548,6 +598,10 @@ class EnhancedCollaborationRoom:
             decision.approved_by.add(voter)
         else:
             decision.abstained.add(voter)
+
+        # Persist vote
+        if self.persistence:
+            self.persistence.save_vote(decision_id, voter, approve=approve, veto=False)
 
         # Calculate if approved
         self._check_decision_approval(decision)
@@ -587,6 +641,10 @@ class EnhancedCollaborationRoom:
                 decision.total_weight = total_weight
 
         if decision.approved:
+            # Persist approval status
+            if self.persistence:
+                self.persistence.update_decision_status(decision.id, approved=True, vetoed=False)
+
             self._broadcast_system_message(
                 f"✅ Decision approved: {decision.text}"
             )

@@ -24,15 +24,20 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("Collaboration features not available (collab_ws_integration.py missing)")
 
-# Setup logging
+# Setup logging with UTF-8 encoding (fixes Windows emoji issues)
+import sys
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.FileHandler('message_bus_ws.log'),
-        logging.StreamHandler()
+        logging.FileHandler('message_bus_ws.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
+# Force stdout to UTF-8 for emoji support
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
