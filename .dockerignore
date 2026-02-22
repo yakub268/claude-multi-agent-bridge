@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Documentation
+*.md
+docs/
+launch/
+
+# Logs and data (will be mounted as volumes)
+*.log
+data/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Demo and test files
+demo*.py
+test*.py
+*_test.py
+examples/
+tests/
+quick_*.py
+create_demo_gif.py
+record_demo.py
+automated_gif_creator.py
+create_workflow_gif.py
+playwright_demo.py
+stress_test.py
+load_test.py
+
+# Launch scripts
+LAUNCH_*.py
+launch_now.py
+
+# Development scripts
+cli_admin.py
+desktop_client*.py
+code_client*.py
+playwright_bridge.py

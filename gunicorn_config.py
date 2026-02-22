@@ -5,11 +5,15 @@ Usage: gunicorn -c gunicorn_config.py wsgi:application
 import multiprocessing
 
 # Server socket
-bind = "0.0.0.0:5001"
+import os
+bind = f"0.0.0.0:{os.getenv('PORT', '5001')}"
 backlog = 2048
 
 # Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
+# For I/O-bound workloads (WebSockets, HTTP), use more workers than CPU-bound formula
+# CPU-bound: (2 * cpu_count) + 1
+# I/O-bound: (cpu_count * 4) + 1 (recommended for WebSocket/async workloads)
+workers = (multiprocessing.cpu_count() * 4) + 1
 worker_class = "gevent"  # Async worker for WebSockets
 worker_connections = 1000
 timeout = 120

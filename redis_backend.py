@@ -41,7 +41,8 @@ class RedisBackend:
                  db: int = 0,
                  password: Optional[str] = None,
                  message_ttl: int = 300,  # 5 minutes
-                 max_messages: int = 500):
+                 max_messages: int = 500,
+                 key_prefix: str = 'claude_bridge'):
         """
         Initialize Redis connection
 
@@ -52,9 +53,11 @@ class RedisBackend:
             password: Optional password
             message_ttl: Message TTL in seconds
             max_messages: Max messages to store per client
+            key_prefix: Namespace prefix for all Redis keys (prevents collisions)
         """
         self.message_ttl = message_ttl
         self.max_messages = max_messages
+        self.key_prefix = key_prefix
 
         try:
             # Create connection pool for better performance
@@ -98,21 +101,21 @@ class RedisBackend:
             msg_id = message['id']
             to_client = message['to']
 
-            # Store in global message list
-            self.redis.lpush('messages:all', json.dumps(message))
-            self.redis.ltrim('messages:all', 0, self.max_messages - 1)
+            # Store in global message list (with namespace)
+            self.redis.lpush(f'{self.key_prefix}:messages:all', json.dumps(message))
+            self.redis.ltrim(f'{self.key_prefix}:messages:all', 0, self.max_messages - 1)
 
             # Store in client-specific queue
             if to_client and to_client != 'all':
-                self.redis.lpush(f'messages:to:{to_client}', json.dumps(message))
-                self.redis.ltrim(f'messages:to:{to_client}', 0, self.max_messages - 1)
+                self.redis.lpush(f'{self.key_prefix}:messages:to:{to_client}', json.dumps(message))
+                self.redis.ltrim(f'{self.key_prefix}:messages:to:{to_client}', 0, self.max_messages - 1)
 
                 # Set TTL
-                self.redis.expire(f'messages:to:{to_client}', self.message_ttl)
+                self.redis.expire(f'{self.key_prefix}:messages:to:{to_client}', self.message_ttl)
 
             # Store message by ID
             self.redis.setex(
-                f'message:{msg_id}',
+                f'{self.key_prefix}:message:{msg_id}',
                 self.message_ttl,
                 json.dumps(message)
             )
@@ -141,9 +144,9 @@ class RedisBackend:
         try:
             # Get from client-specific queue
             if to_client:
-                key = f'messages:to:{to_client}'
+                key = f'{self.key_prefix}:messages:to:{to_client}'
             else:
-                key = 'messages:all'
+                key = f'{self.key_prefix}:messages:all'
 
             # Get messages (newest first)
             raw_messages = self.redis.lrange(key, 0, limit - 1)
@@ -170,7 +173,7 @@ class RedisBackend:
     def get_message(self, msg_id: str) -> Optional[Dict]:
         """Get specific message by ID"""
         try:
-            raw = self.redis.get(f'message:{msg_id}')
+            raw = self.redis.get(f'{self.key_prefix}:message:{msg_id}')
             if raw:
                 return json.loads(raw)
             return None
@@ -195,7 +198,7 @@ class RedisBackend:
         """
         try:
             # Add to client's connection set
-            self.redis.sadd(f'connections:{client_id}', connection_id)
+            self.redis.sadd(f'{self.key_prefix}:connections:{client_id}', connection_id)
 
             # Store connection metadata
             metadata = {
@@ -205,13 +208,13 @@ class RedisBackend:
             }
 
             self.redis.setex(
-                f'connection:{connection_id}',
+                f'{self.key_prefix}:connection:{connection_id}',
                 3600,  # 1 hour TTL
                 json.dumps(metadata)
             )
 
             # Increment global counter
-            self.redis.incr('metrics:total_connections')
+            self.redis.incr(f'{self.key_prefix}:metrics:total_connections')
 
             return True
 
@@ -222,8 +225,8 @@ class RedisBackend:
     def unregister_connection(self, client_id: str, connection_id: str) -> bool:
         """Unregister WebSocket connection"""
         try:
-            self.redis.srem(f'connections:{client_id}', connection_id)
-            self.redis.delete(f'connection:{connection_id}')
+            self.redis.srem(f'{self.key_prefix}:connections:{client_id}', connection_id)
+            self.redis.delete(f'{self.key_prefix}:connection:{connection_id}')
             return True
         except Exception as e:
             logger.error(f"Failed to unregister connection: {e}")
@@ -233,10 +236,10 @@ class RedisBackend:
         """Get count of active connections"""
         try:
             if client_id:
-                return self.redis.scard(f'connections:{client_id}')
+                return self.redis.scard(f'{self.key_prefix}:connections:{client_id}')
             else:
                 # Count all connections across all clients
-                keys = self.redis.keys('connections:*')
+                keys = self.redis.keys(f'{self.key_prefix}:connections:*')
                 total = sum(self.redis.scard(key) for key in keys)
                 return total
         except Exception as e:
@@ -250,21 +253,21 @@ class RedisBackend:
     def increment_metric(self, metric_name: str, amount: int = 1):
         """Increment a metric counter"""
         try:
-            self.redis.incrby(f'metrics:{metric_name}', amount)
+            self.redis.incrby(f'{self.key_prefix}:metrics:{metric_name}', amount)
         except Exception as e:
             logger.error(f"Failed to increment metric {metric_name}: {e}")
 
     def set_metric(self, metric_name: str, value: any):
         """Set metric value"""
         try:
-            self.redis.set(f'metrics:{metric_name}', str(value))
+            self.redis.set(f'{self.key_prefix}:metrics:{metric_name}', str(value))
         except Exception as e:
             logger.error(f"Failed to set metric {metric_name}: {e}")
 
     def get_metric(self, metric_name: str) -> Optional[str]:
         """Get metric value"""
         try:
-            return self.redis.get(f'metrics:{metric_name}')
+            return self.redis.get(f'{self.key_prefix}:metrics:{metric_name}')
         except Exception as e:
             logger.error(f"Failed to get metric {metric_name}: {e}")
             return None
@@ -272,10 +275,10 @@ class RedisBackend:
     def get_all_metrics(self) -> Dict:
         """Get all metrics"""
         try:
-            keys = self.redis.keys('metrics:*')
+            keys = self.redis.keys(f'{self.key_prefix}:metrics:*')
             metrics = {}
             for key in keys:
-                metric_name = key.replace('metrics:', '')
+                metric_name = key.replace(f'{self.key_prefix}:metrics:', '')
                 value = self.redis.get(key)
 
                 # Try to convert to int
@@ -298,7 +301,7 @@ class RedisBackend:
         """Store acknowledgment data"""
         try:
             self.redis.setex(
-                f'ack:{msg_id}',
+                f'{self.key_prefix}:ack:{msg_id}',
                 self.message_ttl,
                 json.dumps(ack_data)
             )
@@ -308,7 +311,7 @@ class RedisBackend:
     def get_ack(self, msg_id: str) -> Optional[Dict]:
         """Get acknowledgment data"""
         try:
-            raw = self.redis.get(f'ack:{msg_id}')
+            raw = self.redis.get(f'{self.key_prefix}:ack:{msg_id}')
             if raw:
                 return json.loads(raw)
             return None

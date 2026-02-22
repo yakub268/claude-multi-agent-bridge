@@ -17,6 +17,7 @@ import uuid
 import hashlib
 import subprocess
 import tempfile
+import logging
 from typing import Dict, List, Optional, Set, Callable, Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -168,7 +169,8 @@ class EnhancedCollaborationRoom:
     """
 
     def __init__(self, room_id: str, topic: str = "General Collaboration",
-                 persistence_enabled: bool = True):
+                 persistence_enabled: bool = True,
+                 max_total_file_size_mb: int = 100):
         self.room_id = room_id
         self.topic = topic
         self.members: Dict[str, RoomMember] = {}
@@ -182,6 +184,10 @@ class EnhancedCollaborationRoom:
         self.tasks = []
         self.files: Dict[str, SharedFile] = {}
         self.code_executions: List[CodeExecution] = []
+
+        # Memory management
+        self.max_total_file_size = max_total_file_size_mb * 1024 * 1024  # Convert MB to bytes
+        self._current_file_size = 0
 
         # Callbacks
         self.message_callbacks: List[Callable] = []
@@ -365,6 +371,19 @@ class EnhancedCollaborationRoom:
                 f"File: {file_name}"
             )
 
+        # Check total room file size limit (prevent memory leak from many files)
+        if self._current_file_size + len(file_content) > self.max_total_file_size:
+            # Try to evict oldest files first (LRU eviction)
+            self._evict_oldest_files(len(file_content))
+
+            # Check again after eviction
+            if self._current_file_size + len(file_content) > self.max_total_file_size:
+                raise ValueError(
+                    f"Room file storage limit reached ({self.max_total_file_size / 1024 / 1024:.1f}MB). "
+                    f"Current: {self._current_file_size / 1024 / 1024:.1f}MB, "
+                    f"Attempted upload: {len(file_content) / 1024 / 1024:.1f}MB"
+                )
+
         file_id = hashlib.sha256(file_content).hexdigest()[:16]
 
         shared_file = SharedFile(
@@ -379,6 +398,7 @@ class EnhancedCollaborationRoom:
         )
 
         self.files[file_id] = shared_file
+        self._current_file_size += len(file_content)
 
         # Persist file
         if self.persistence:
@@ -407,6 +427,48 @@ class EnhancedCollaborationRoom:
     def download_file(self, file_id: str) -> Optional[SharedFile]:
         """Download file from room"""
         return self.files.get(file_id)
+
+    def _evict_oldest_files(self, needed_bytes: int):
+        """
+        Evict oldest files to make room for new upload (LRU eviction)
+
+        Args:
+            needed_bytes: Bytes needed for new file
+        """
+        if not self.files:
+            return
+
+        # Sort files by upload time (oldest first)
+        sorted_files = sorted(
+            self.files.items(),
+            key=lambda x: x[1].uploaded_at
+        )
+
+        freed_bytes = 0
+        evicted_count = 0
+
+        for file_id, shared_file in sorted_files:
+            if freed_bytes >= needed_bytes:
+                break
+
+            # Remove file
+            del self.files[file_id]
+            self._current_file_size -= shared_file.size
+            freed_bytes += shared_file.size
+            evicted_count += 1
+
+            # Announce eviction
+            self._broadcast_system_message(
+                f"🗑️ File evicted due to storage limits: {shared_file.name} ({shared_file.size} bytes)",
+                channel="main"
+            )
+
+        if evicted_count > 0:
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Evicted {evicted_count} files from room {self.room_id}, "
+                f"freed {freed_bytes / 1024 / 1024:.1f}MB"
+            )
 
     def execute_code(self, client_id: str, code: str, language: CodeLanguage,
                     channel: str = "main") -> CodeExecution:
@@ -498,7 +560,7 @@ class EnhancedCollaborationRoom:
                 ['python', temp_file],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=30  # 30 seconds (increased from 5s for complex tasks)
             )
             return result.stdout, result.stderr, result.returncode
         finally:
@@ -515,7 +577,7 @@ class EnhancedCollaborationRoom:
                 ['node', temp_file],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=30  # 30 seconds (increased from 5s for complex tasks)
             )
             return result.stdout, result.stderr, result.returncode
         except FileNotFoundError:

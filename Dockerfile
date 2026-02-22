@@ -14,12 +14,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY *.py ./
-COPY collab_ws_integration.py ./
-COPY auth.py ./
-COPY monitoring.py ./
-COPY redis_backend.py ./
+# Copy application code (.dockerignore excludes test/demo files)
+COPY . .
 
 # Create data directories
 RUN mkdir -p data logs

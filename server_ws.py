@@ -17,6 +17,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sock import Sock
 
+# Import datetime utilities for consistent timezone handling
+from datetime_utils import utc_now, utc_timestamp, parse_iso_timestamp, seconds_since
+
 # Import collaboration bridge
 try:
     from collab_ws_integration import CollabWSBridge
@@ -46,21 +49,62 @@ except ImportError:
 
 # Setup logging with UTF-8 encoding (fixes Windows emoji issues)
 import sys
+
+# Configure logging based on environment
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+log_format = os.getenv('LOG_FORMAT', 'standard')
+
+if log_format == 'json':
+    # JSON logging for structured log aggregation (ELK, Datadog, etc.)
+    log_formatter = logging.Formatter(
+        '{"timestamp":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}'
+    )
+else:
+    # Standard logging
+    log_formatter = logging.Formatter(
+        '%(asctime)s [%(levelname)s] [%(name)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+# File handler
+file_handler = logging.FileHandler('message_bus_ws.log', encoding='utf-8')
+file_handler.setFormatter(log_formatter)
+
+# Console handler
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(log_formatter)
+
+# Configure root logger
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler('message_bus_ws.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    level=getattr(logging, log_level),
+    handlers=[file_handler, console_handler]
 )
+
 # Force stdout to UTF-8 for emoji support
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 logger = logging.getLogger(__name__)
+logger.info(f"Logging configured: level={log_level}, format={log_format}")
 
 app = Flask(__name__)
+
+# Request ID middleware for distributed tracing
+@app.before_request
+def add_request_id():
+    """Add unique request ID to each request for tracing"""
+    request.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+    # Log request with ID
+    if request.method != 'OPTIONS':  # Skip OPTIONS preflight
+        logger.debug(f"[{request.request_id[:8]}] {request.method} {request.path}")
+
+@app.after_request
+def add_request_id_header(response):
+    """Add request ID to response headers"""
+    if hasattr(request, 'request_id'):
+        response.headers['X-Request-ID'] = request.request_id
+    return response
 
 # CORS configuration - whitelist specific origins (not '*')
 # To allow all origins (NOT recommended for production), set CORS_ORIGINS env var to '*'
@@ -90,12 +134,12 @@ def cleanup_old_messages():
     while True:
         time.sleep(60)  # Run every minute
         try:
-            now = datetime.now(timezone.utc)
+            now = utc_now()
             expired = []
 
             for msg in list(message_store):
                 try:
-                    msg_time = datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                    msg_time = parse_iso_timestamp(msg['timestamp'])
                     age_seconds = (now - msg_time).total_seconds()
                     if age_seconds > message_ttl:
                         expired.append(msg)
@@ -119,12 +163,12 @@ def cleanup_old_acks():
     while True:
         time.sleep(120)  # Run every 2 minutes
         try:
-            now = datetime.now(timezone.utc)
+            now = utc_now()
             expired = []
 
             for msg_id, ack_data in list(pending_acks.items()):
                 try:
-                    ack_time = datetime.fromisoformat(ack_data['timestamp'].replace('Z', '+00:00'))
+                    ack_time = parse_iso_timestamp(ack_data['timestamp'])
                     age_seconds = (now - ack_time).total_seconds()
                     if age_seconds > ack_ttl:
                         expired.append(msg_id)
@@ -202,7 +246,7 @@ def websocket_handler(ws, client_id):
         ws.send(json.dumps({
             'type': 'error',
             'error': f'Server connection limit reached ({MAX_CONNECTIONS} connections)',
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            'timestamp': utc_timestamp()
         }))
         ws.close()
         return
@@ -212,7 +256,7 @@ def websocket_handler(ws, client_id):
         ws.send(json.dumps({
             'type': 'error',
             'error': f'Connection limit reached for client ({MAX_CONNECTIONS_PER_CLIENT} connections per client)',
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            'timestamp': utc_timestamp()
         }))
         ws.close()
         return
@@ -222,7 +266,7 @@ def websocket_handler(ws, client_id):
     connection_metadata[ws] = {
         'client_id': client_id,
         'connection_id': connection_id,
-        'connected_at': datetime.now(timezone.utc).isoformat()
+        'connected_at': utc_timestamp()
     }
 
     # Register with collab bridge
@@ -242,15 +286,34 @@ def websocket_handler(ws, client_id):
         ws.send(json.dumps({
             'type': 'connection_confirmed',
             'client_id': client_id,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': utc_timestamp(),
             'server': 'claude-bridge-ws-v1.0'
         }))
 
+        # Server-side heartbeat to detect dead connections
+        last_ping_time = time.time()
+        ping_interval = 30  # Send ping every 30 seconds
+
         # Listen for incoming messages
         while True:
-            data = ws.receive()
+            # Non-blocking receive with timeout for heartbeat
+            data = ws.receive(timeout=1.0)
+
+            # Send server ping if interval elapsed
+            current_time = time.time()
+            if current_time - last_ping_time >= ping_interval:
+                try:
+                    ws.send(json.dumps({
+                        'type': 'ping',
+                        'timestamp': utc_timestamp()
+                    }))
+                    last_ping_time = current_time
+                except Exception as e:
+                    logger.warning(f"Failed to send ping to {client_id}: {e}")
+                    break  # Connection is dead
+
             if data is None:
-                break
+                continue  # Timeout, no data received
 
             try:
                 message = json.loads(data)
@@ -260,7 +323,7 @@ def websocket_handler(ws, client_id):
                 ws.send(json.dumps({
                     'type': 'error',
                     'error': 'Invalid JSON',
-                    'timestamp': datetime.now(timezone.utc).isoformat()
+                    'timestamp': utc_timestamp()
                 }))
             except Exception as e:
                 logger.error(f"Error handling message from {client_id}: {e}")
@@ -312,7 +375,7 @@ def handle_ws_message(ws, client_id, message):
         # Respond to ping
         ws.send(json.dumps({
             'type': 'pong',
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            'timestamp': utc_timestamp()
         }))
 
     elif msg_type == 'subscribe':
@@ -336,7 +399,7 @@ def handle_ws_message(ws, client_id, message):
                         'payload': {
                             'response': response
                         },
-                        'timestamp': datetime.now(timezone.utc).isoformat()
+                        'timestamp': utc_timestamp()
                     }
                 }))
             except Exception as e:
@@ -354,7 +417,7 @@ def handle_ws_message(ws, client_id, message):
                                 'error': str(e)
                             }
                         },
-                        'timestamp': datetime.now(timezone.utc).isoformat()
+                        'timestamp': utc_timestamp()
                     }
                 }))
         else:
@@ -379,7 +442,7 @@ def handle_send_message(from_client, message_data):
 
     # Create message (using UUID to prevent collisions)
     msg_id = f"msg-{uuid.uuid4().hex[:16]}"
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = utc_timestamp()
 
     msg = {
         'id': msg_id,
@@ -452,10 +515,12 @@ def handle_message_ack(client_id, ack_data):
 
 
 # ============================================================================
-# REST API (Backward Compatibility)
+# REST API (Backward Compatibility + Versioned)
 # ============================================================================
 
-@app.route('/api/send', methods=['POST'])
+# Version 1 API (current, recommended)
+@app.route('/api/v1/send', methods=['POST'])
+@app.route('/api/send', methods=['POST'])  # Backward compatibility (unversioned)
 def http_send():
     """HTTP endpoint for sending messages (backward compatible)"""
     try:
@@ -487,7 +552,7 @@ def http_send():
 
         # Create message (using UUID to prevent collisions)
         msg_id = f"msg-{uuid.uuid4().hex[:16]}"
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = utc_timestamp()
         send_time = time.time()
 
         msg = {
@@ -525,7 +590,8 @@ def http_send():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/messages', methods=['GET'])
+@app.route('/api/v1/messages', methods=['GET'])
+@app.route('/api/messages', methods=['GET'])  # Backward compatibility
 def http_get_messages():
     """HTTP endpoint for getting messages (backward compatible with polling)"""
     try:
@@ -565,7 +631,8 @@ def http_get_messages():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/status', methods=['GET'])
+@app.route('/api/v1/status', methods=['GET'])
+@app.route('/api/status', methods=['GET'])  # Backward compatibility
 def get_status():
     """Get server status and metrics"""
     # Rate limiting
@@ -614,7 +681,8 @@ def get_status():
     return jsonify(status), 200
 
 
-@app.route('/api/clear', methods=['POST'])
+@app.route('/api/v1/clear', methods=['POST'])
+@app.route('/api/clear', methods=['POST'])  # Backward compatibility
 def clear_messages():
     """Clear message store"""
     # Rate limiting
@@ -655,7 +723,8 @@ def prometheus_metrics():
 # Collaboration API Endpoints
 # ============================================================================
 
-@app.route('/api/collab/rooms', methods=['GET'])
+@app.route('/api/v1/collab/rooms', methods=['GET'])
+@app.route('/api/collab/rooms', methods=['GET'])  # Backward compatibility
 def list_collab_rooms():
     """List all collaboration rooms"""
     # Rate limiting
@@ -680,7 +749,8 @@ def list_collab_rooms():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/collab/rooms/<room_id>', methods=['GET'])
+@app.route('/api/v1/collab/rooms/<room_id>', methods=['GET'])
+@app.route('/api/collab/rooms/<room_id>', methods=['GET'])  # Backward compatibility
 def get_collab_room(room_id):
     """Get room details"""
     # Rate limiting
@@ -729,7 +799,7 @@ def graceful_shutdown(signum, frame):
                 ws.send(json.dumps({
                     'type': 'server_shutdown',
                     'message': 'Server is shutting down',
-                    'timestamp': datetime.now(timezone.utc).isoformat()
+                    'timestamp': utc_timestamp()
                 }))
                 ws.close()
             except Exception as e:
