@@ -15,6 +15,15 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sock import Sock
 
+# Import collaboration bridge
+try:
+    from collab_ws_integration import CollabWSBridge
+    COLLAB_ENABLED = True
+except ImportError:
+    COLLAB_ENABLED = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Collaboration features not available (collab_ws_integration.py missing)")
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +60,9 @@ metrics = {
 # Message acknowledgment tracking
 pending_acks = {}  # message_id -> {sent_to: set(), acked_by: set(), timestamp}
 
+# Collaboration bridge
+collab_bridge = CollabWSBridge() if COLLAB_ENABLED else None
+
 
 # ============================================================================
 # WebSocket Handlers
@@ -70,6 +82,10 @@ def websocket_handler(ws, client_id):
         'client_id': client_id,
         'connected_at': datetime.now(timezone.utc).isoformat()
     }
+
+    # Register with collab bridge
+    if collab_bridge:
+        collab_bridge.register_ws_connection(ws, client_id)
 
     metrics['total_connections'] += 1
     metrics['active_connections'] = sum(len(conns) for conns in ws_connections.values())
@@ -111,6 +127,10 @@ def websocket_handler(ws, client_id):
         if ws in connection_metadata:
             del connection_metadata[ws]
 
+        # Unregister from collab bridge
+        if collab_bridge:
+            collab_bridge.unregister_ws_connection(ws)
+
         if not ws_connections[client_id]:
             del ws_connections[client_id]
 
@@ -140,6 +160,30 @@ def handle_ws_message(ws, client_id, message):
     elif msg_type == 'subscribe':
         # Client confirms subscription (already handled by connection)
         logger.info(f"{client_id} confirmed subscription")
+
+    elif msg_type == 'collab':
+        # Collaboration room action
+        if collab_bridge:
+            try:
+                response = collab_bridge.handle_collab_message(ws, client_id, message)
+                ws.send(json.dumps({
+                    'type': 'collab_response',
+                    'response': response
+                }))
+            except Exception as e:
+                logger.error(f"Collab error from {client_id}: {e}")
+                ws.send(json.dumps({
+                    'type': 'collab_response',
+                    'response': {
+                        'status': 'error',
+                        'error': str(e)
+                    }
+                }))
+        else:
+            ws.send(json.dumps({
+                'type': 'error',
+                'error': 'Collaboration features not available'
+            }))
 
     else:
         logger.warning(f"Unknown message type from {client_id}: {msg_type}")
@@ -319,10 +363,16 @@ def get_status():
         if elapsed > 0:
             metrics['messages_per_minute'] = round(metrics['total_messages'] / (elapsed / 60), 2)
 
-    return jsonify({
+    status = {
         'status': 'running',
         'mode': 'websocket',
-        'version': '1.1.0',
+        'version': '1.3.0',
+        'features': {
+            'websocket': True,
+            'collaboration': COLLAB_ENABLED,
+            'acknowledgments': True,
+            'rest_api': True
+        },
         'metrics': metrics,
         'connections': {
             'active': metrics['active_connections'],
@@ -333,7 +383,16 @@ def get_status():
             'max': message_store.maxlen
         },
         'pending_acks': len(pending_acks)
-    }), 200
+    }
+
+    # Add collab stats if available
+    if collab_bridge:
+        status['collaboration'] = {
+            'rooms': len(collab_bridge.hub.rooms),
+            'active_rooms': collab_bridge.hub.list_rooms()
+        }
+
+    return jsonify(status), 200
 
 
 @app.route('/api/clear', methods=['POST'])
@@ -352,17 +411,61 @@ def health_check():
 
 
 # ============================================================================
+# Collaboration API Endpoints
+# ============================================================================
+
+@app.route('/api/collab/rooms', methods=['GET'])
+def list_collab_rooms():
+    """List all collaboration rooms"""
+    if not collab_bridge:
+        return jsonify({'error': 'Collaboration not available'}), 503
+
+    try:
+        rooms = collab_bridge.hub.list_rooms()
+        return jsonify({
+            'status': 'success',
+            'rooms': rooms,
+            'total': len(rooms)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error listing rooms: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/collab/rooms/<room_id>', methods=['GET'])
+def get_collab_room(room_id):
+    """Get room details"""
+    if not collab_bridge:
+        return jsonify({'error': 'Collaboration not available'}), 503
+
+    try:
+        room = collab_bridge.hub.get_room(room_id)
+        if not room:
+            return jsonify({'error': 'Room not found'}), 404
+
+        summary = room.get_summary()
+        return jsonify({
+            'status': 'success',
+            'room': summary
+        }), 200
+    except Exception as e:
+        logger.error(f"Error getting room {room_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
 if __name__ == '__main__':
     logger.info("="*70)
-    logger.info("🚀 CLAUDE MULTI-AGENT BRIDGE - WebSocket Server v1.1")
+    logger.info("🚀 CLAUDE MULTI-AGENT BRIDGE - WebSocket Server v1.3")
     logger.info("="*70)
     logger.info("")
     logger.info("📡 Server: http://localhost:5001")
     logger.info("🔌 WebSocket: ws://localhost:5001/ws/<client_id>")
     logger.info("📊 Status: http://localhost:5001/api/status")
+    logger.info("🤝 Collab Rooms: http://localhost:5001/api/collab/rooms")
     logger.info("")
     logger.info("Features:")
     logger.info("  ✅ Real-time WebSocket connections")
@@ -370,6 +473,13 @@ if __name__ == '__main__':
     logger.info("  ✅ Backward compatible REST API")
     logger.info("  ✅ Connection pooling per client")
     logger.info("  ✅ Automatic reconnection support")
+    if COLLAB_ENABLED:
+        logger.info("  ✅ Collaboration rooms (enhanced voting, channels, code execution)")
+        logger.info("  ✅ File sharing between Claudes")
+        logger.info("  ✅ Kanban board integration")
+        logger.info("  ✅ GitHub integration (issues/PRs)")
+    else:
+        logger.info("  ⚠️  Collaboration features disabled (missing dependencies)")
     logger.info("")
     logger.info("Starting server...")
     logger.info("="*70)
