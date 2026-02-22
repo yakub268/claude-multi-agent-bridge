@@ -33,6 +33,19 @@ class CodeClientCollab(CodeClientWS):
         super().__init__(client_id, server_url)
         self.current_room: Optional[str] = None
         self.room_handlers: Dict[str, List[Callable]] = {}
+        self.collab_responses: Dict[str, any] = {}  # response_id -> response
+        self.collab_lock = __import__('threading').Lock()
+
+        # Register handler for collab responses
+        self.on('collab_response', self._handle_collab_response)
+
+    def _handle_collab_response(self, msg: Dict):
+        """Handle collab response message"""
+        response = msg.get('payload', {}).get('response', {})
+        response_id = msg.get('id', 'default')
+
+        with self.collab_lock:
+            self.collab_responses[response_id] = response
 
     # ========================================================================
     # Room Management
@@ -346,30 +359,44 @@ class CodeClientCollab(CodeClientWS):
 
     def _send_collab(self, payload: Dict) -> Dict:
         """Send collaboration message and get response"""
+        import time
+        import uuid
+
+        # Generate unique ID for this request
+        request_id = str(uuid.uuid4())
+
         message = {
             'type': 'collab',
+            'request_id': request_id,
             **payload
         }
 
         # Send via WebSocket
-        self.ws.send(json.dumps(message))
+        if not self.connected:
+            raise Exception("Not connected to server")
+
+        self.send_ws(message)
 
         # Wait for response
-        import time
         timeout = 10
         start = time.time()
 
         while time.time() - start < timeout:
-            try:
-                data = self.ws.receive(timeout=1)
-                if data:
-                    response = json.loads(data)
-                    if response.get('type') == 'collab_response':
-                        return response['response']
-            except:
-                pass
+            with self.collab_lock:
+                if request_id in self.collab_responses:
+                    response = self.collab_responses.pop(request_id)
+                    return response
+
+            time.sleep(0.1)
 
         raise Exception("Timeout waiting for collab response")
+
+    def send_ws(self, message: Dict):
+        """Send message via WebSocket"""
+        if self.ws and self.connected:
+            self.ws.send(json.dumps(message))
+        else:
+            raise Exception("WebSocket not connected")
 
 
 # Example usage

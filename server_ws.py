@@ -163,20 +163,40 @@ def handle_ws_message(ws, client_id, message):
 
     elif msg_type == 'collab':
         # Collaboration room action
+        request_id = message.get('request_id', 'default')
+
         if collab_bridge:
             try:
                 response = collab_bridge.handle_collab_message(ws, client_id, message)
                 ws.send(json.dumps({
-                    'type': 'collab_response',
-                    'response': response
+                    'type': 'message',
+                    'message': {
+                        'id': request_id,
+                        'from': 'server',
+                        'to': client_id,
+                        'type': 'collab_response',
+                        'payload': {
+                            'response': response
+                        },
+                        'timestamp': datetime.now(timezone.utc).isoformat()
+                    }
                 }))
             except Exception as e:
                 logger.error(f"Collab error from {client_id}: {e}")
                 ws.send(json.dumps({
-                    'type': 'collab_response',
-                    'response': {
-                        'status': 'error',
-                        'error': str(e)
+                    'type': 'message',
+                    'message': {
+                        'id': request_id,
+                        'from': 'server',
+                        'to': client_id,
+                        'type': 'collab_response',
+                        'payload': {
+                            'response': {
+                                'status': 'error',
+                                'error': str(e)
+                            }
+                        },
+                        'timestamp': datetime.now(timezone.utc).isoformat()
                     }
                 }))
         else:
