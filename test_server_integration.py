@@ -17,6 +17,9 @@ Tests:
 """
 import time
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def test_integration():
@@ -151,7 +154,8 @@ def test_integration():
         code.leave_room()
         desktop1.leave_room()
         desktop2.leave_room()
-    except:
+    except Exception as e:
+        logger.debug(f"Error during cleanup: {e}, continuing anyway")
         pass
 
 

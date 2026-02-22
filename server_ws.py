@@ -59,12 +59,58 @@ if sys.platform == 'win32':
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, origins='*')
+
+# CORS configuration - whitelist specific origins (not '*')
+# To allow all origins (NOT recommended for production), set CORS_ORIGINS env var to '*'
+import os
+allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5000,http://127.0.0.1:3000,http://127.0.0.1:5000').split(',')
+if '*' in allowed_origins:
+    logger.warning("⚠️  CORS allowing ALL origins - not recommended for production!")
+    CORS(app, origins='*')
+else:
+    logger.info(f"CORS whitelist: {allowed_origins}")
+    CORS(app, origins=allowed_origins)
+
 sock = Sock(app)
 
 # In-memory message store
 message_store = deque(maxlen=500)  # Keep last 500 messages
 message_ttl = 300  # 5 minutes
+
+# Start background cleanup task for message TTL
+def cleanup_old_messages():
+    """Background task to remove expired messages"""
+    import threading
+    while True:
+        time.sleep(60)  # Run every minute
+        try:
+            now = datetime.now(timezone.utc)
+            expired = []
+
+            for msg in list(message_store):
+                try:
+                    msg_time = datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                    age_seconds = (now - msg_time).total_seconds()
+                    if age_seconds > message_ttl:
+                        expired.append(msg)
+                except Exception:
+                    pass
+
+            for msg in expired:
+                try:
+                    message_store.remove(msg)
+                except ValueError:
+                    pass  # Already removed
+
+            if expired:
+                logger.debug(f"Cleaned up {len(expired)} expired messages")
+        except Exception as e:
+            logger.error(f"Message cleanup error: {e}")
+
+# Start cleanup thread
+import threading
+cleanup_thread = threading.Thread(target=cleanup_old_messages, daemon=True)
+cleanup_thread.start()
 
 # WebSocket connections by client
 ws_connections = defaultdict(set)  # client_id -> set of websocket connections
@@ -104,12 +150,17 @@ def websocket_handler(ws, client_id):
     WebSocket connection handler
     Maintains persistent connection for real-time messaging
     """
-    logger.info(f"WebSocket connection opened: {client_id}")
+    # Generate unique connection ID to prevent race conditions
+    import uuid
+    connection_id = str(uuid.uuid4())
 
-    # Register connection
+    logger.info(f"WebSocket connection opened: {client_id} (conn_id: {connection_id[:8]})")
+
+    # Register connection with unique ID
     ws_connections[client_id].add(ws)
     connection_metadata[ws] = {
         'client_id': client_id,
+        'connection_id': connection_id,
         'connected_at': datetime.now(timezone.utc).isoformat()
     }
 
@@ -157,7 +208,12 @@ def websocket_handler(ws, client_id):
     except Exception as e:
         logger.error(f"WebSocket error for {client_id}: {e}")
     finally:
-        # Cleanup on disconnect
+        # Cleanup on disconnect - use connection_id to avoid race conditions
+        conn_info = connection_metadata.get(ws)
+        if conn_info:
+            logger.info(f"WebSocket connection closed: {client_id} (conn_id: {conn_info['connection_id'][:8]})")
+
+        # Remove this specific connection
         ws_connections[client_id].discard(ws)
         if ws in connection_metadata:
             del connection_metadata[ws]
@@ -166,7 +222,8 @@ def websocket_handler(ws, client_id):
         if collab_bridge:
             collab_bridge.unregister_ws_connection(ws)
 
-        if not ws_connections[client_id]:
+        # Clean up client_id entry if no more connections
+        if client_id in ws_connections and not ws_connections[client_id]:
             del ws_connections[client_id]
 
         metrics['active_connections'] = sum(len(conns) for conns in ws_connections.values())

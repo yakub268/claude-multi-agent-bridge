@@ -196,8 +196,8 @@ class MetricsCollector:
 
             if PROMETHEUS_AVAILABLE:
                 self.rooms_active.set(len(self._active_rooms))
-                # Remove room-specific metrics
-                self.room_members.remove(room_id)
+                # Set room members to 0 instead of remove (which doesn't exist)
+                self.room_members.labels(room_id=room_id).set(0)
 
     def record_room_member_join(self, room_id: str):
         """Record member joined room"""

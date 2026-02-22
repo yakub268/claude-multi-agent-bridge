@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import time
 import psutil
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,7 +24,8 @@ class HealthCheck:
             try:
                 db.execute("SELECT 1")
                 return True, "Database responsive"
-            except:
+            except Exception as e:
+                logger.error(f"Database check failed: {e}")
                 return False, "Database connection failed"
 
         check = HealthCheck(

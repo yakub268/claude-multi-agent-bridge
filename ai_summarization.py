@@ -232,8 +232,9 @@ Format your response as JSON:
                 api_key = os.getenv('OPENAI_API_KEY')
 
                 if not api_key:
-                    logger.warning("No OpenAI API key found, falling back to simple extraction")
-                    raise ValueError("No API key")
+                    logger.error("❌ OPENAI_API_KEY environment variable not set. AI summarization unavailable.")
+                    logger.error("   Set the API key: export OPENAI_API_KEY=sk-...")
+                    raise ValueError("OpenAI API key required for AI summarization. Set OPENAI_API_KEY environment variable.")
 
                 client = openai.OpenAI(api_key=api_key)
 

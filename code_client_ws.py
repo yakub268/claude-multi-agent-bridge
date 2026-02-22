@@ -6,10 +6,13 @@ Real-time bi-directional communication
 import json
 import time
 import threading
+import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Callable, Optional
 import websocket
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class CodeClientWS:
@@ -239,7 +242,8 @@ class CodeClientWS:
         try:
             self.ws.send(json.dumps({'type': 'ping'}))
             return True
-        except:
+        except Exception as e:
+            logger.error(f"Ping failed: {e}")
             return False
 
     def close(self):

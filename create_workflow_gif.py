@@ -4,6 +4,9 @@ Creates a conceptual workflow GIF showing the multi-agent bridge
 """
 from PIL import Image, ImageDraw, ImageFont
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_text_image(text, width=1200, height=200, bg_color=(30, 30, 30), text_color=(255, 255, 255), font_size=40):
     """Create an image with centered text"""
@@ -12,10 +15,11 @@ def create_text_image(text, width=1200, height=200, bg_color=(30, 30, 30), text_
 
     try:
         font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", font_size)
-    except:
+    except Exception as e:
         try:
             font = ImageFont.truetype("arial.ttf", font_size)
-        except:
+        except Exception as e2:
+            logger.warning(f"Could not load TrueType fonts ({e}, {e2}), using default font")
             font = ImageFont.load_default()
 
     # Get text bbox
@@ -38,7 +42,8 @@ def create_workflow_diagram(width=1200, height=400):
     try:
         title_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 32)
         font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 24)
-    except:
+    except Exception as e:
+        logger.warning(f"Could not load TrueType fonts ({e}), using default font")
         title_font = font = ImageFont.load_default()
 
     # Title
@@ -101,7 +106,8 @@ def create_demo_gif():
     draw = ImageDraw.Draw(code_img)
     try:
         font = ImageFont.truetype("C:\\Windows\\Fonts\\consola.ttf", 28)
-    except:
+    except Exception as e:
+        logger.warning(f"Could not load consola.ttf ({e}), using default font")
         font = ImageFont.load_default()
 
     code = """c.send('browser', 'command', {

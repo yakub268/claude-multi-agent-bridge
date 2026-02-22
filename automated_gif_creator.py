@@ -22,7 +22,7 @@ class DemoGifCreator:
         # Try to use a nice font, fall back to default
         try:
             font = ImageFont.truetype("arial.ttf", 20)
-        except:
+        except Exception as e:
             font = ImageFont.load_default()
 
         # Center the text

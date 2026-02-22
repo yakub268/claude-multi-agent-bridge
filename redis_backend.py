@@ -57,17 +57,24 @@ class RedisBackend:
         self.max_messages = max_messages
 
         try:
-            self.redis = redis.Redis(
+            # Create connection pool for better performance
+            pool = redis.ConnectionPool(
                 host=host,
                 port=port,
                 db=db,
                 password=password,
-                decode_responses=True
+                decode_responses=True,
+                max_connections=50,  # Allow up to 50 concurrent connections
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                retry_on_timeout=True
             )
+
+            self.redis = redis.Redis(connection_pool=pool)
 
             # Test connection
             self.redis.ping()
-            logger.info(f"✅ Connected to Redis at {host}:{port}")
+            logger.info(f"✅ Connected to Redis at {host}:{port} (pooled, max_conn=50)")
 
         except redis.ConnectionError as e:
             logger.error(f"❌ Failed to connect to Redis: {e}")

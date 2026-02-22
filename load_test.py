@@ -164,7 +164,8 @@ class LoadTestClient:
         if self.ws:
             try:
                 self.ws.close()
-            except:
+            except Exception as e:
+                logger.debug(f"Error closing WebSocket: {e}, continuing anyway")
                 pass
 
 

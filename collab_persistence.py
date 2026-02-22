@@ -46,11 +46,12 @@ class CollabPersistence:
                 room_id TEXT PRIMARY KEY,
                 topic TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                active INTEGER DEFAULT 1,
-
-                INDEX idx_active (active)
+                active INTEGER DEFAULT 1
             )
         """)
+
+        # Create index for rooms
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_active ON rooms(active)")
 
         # Members table
         conn.execute("""
@@ -80,11 +81,13 @@ class CollabPersistence:
                 channel TEXT DEFAULT 'main',
                 reply_to TEXT,
 
-                FOREIGN KEY (room_id) REFERENCES rooms(room_id),
-                INDEX idx_room_time (room_id, timestamp),
-                INDEX idx_channel (room_id, channel)
+                FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
         """)
+
+        # Create indexes for messages
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_room_time ON messages(room_id, timestamp)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_channel ON messages(room_id, channel)")
 
         # Decisions table
         conn.execute("""

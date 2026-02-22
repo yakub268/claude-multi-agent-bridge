@@ -24,6 +24,12 @@ from collections import deque
 from enum import Enum
 from pathlib import Path
 
+
+class SecurityError(Exception):
+    """Raised when a security violation is detected"""
+    pass
+
+
 # Import persistence layer
 try:
     from collab_persistence import CollabPersistence
@@ -410,6 +416,19 @@ class EnhancedCollaborationRoom:
         """
         if client_id not in self.members:
             raise ValueError(f"Client {client_id} not in room")
+
+        # SECURITY: Code execution disabled by default due to RCE risk
+        # To enable, set ENABLE_CODE_EXECUTION=true environment variable
+        # AND use Docker sandboxing (see deployment docs)
+        import os
+        if not os.getenv('ENABLE_CODE_EXECUTION', 'false').lower() == 'true':
+            raise SecurityError(
+                "Code execution is disabled for security reasons. "
+                "This feature allows arbitrary code execution and poses "
+                "critical security risks. To enable (NOT recommended for "
+                "production), set ENABLE_CODE_EXECUTION=true and implement "
+                "Docker sandboxing as described in DEPLOYMENT.md"
+            )
 
         start_time = time.time()
 
