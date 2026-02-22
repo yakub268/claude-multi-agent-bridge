@@ -62,6 +62,14 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
     print(f"   Cost: ${plan.estimated_cost_usd:.2f}")
     print()
 
+    # Show model selection and planning mode
+    if plan.roles:
+        print("   🤖 Model Selection & Planning Mode:")
+        for role in plan.roles:
+            planning_marker = " 📋" if role.use_planning_mode else ""
+            print(f"     • {role.client_id}: {role.model.value.upper()}{planning_marker}")
+        print()
+
     print("   Reasoning:")
     for line in plan.reasoning.split('\n'):
         print(f"     {line}")

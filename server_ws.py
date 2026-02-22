@@ -24,6 +24,24 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("Collaboration features not available (collab_ws_integration.py missing)")
 
+# Import monitoring
+try:
+    from monitoring import MetricsCollector
+    MONITORING_ENABLED = True
+except ImportError:
+    MONITORING_ENABLED = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Monitoring not available (monitoring.py missing)")
+
+# Import auth
+try:
+    from auth import TokenAuth, RateLimiter
+    AUTH_ENABLED = True
+except ImportError:
+    AUTH_ENABLED = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Authentication not available (auth.py missing)")
+
 # Setup logging with UTF-8 encoding (fixes Windows emoji issues)
 import sys
 logging.basicConfig(
@@ -68,6 +86,13 @@ pending_acks = {}  # message_id -> {sent_to: set(), acked_by: set(), timestamp}
 # Collaboration bridge
 collab_bridge = CollabWSBridge() if COLLAB_ENABLED else None
 
+# Monitoring
+metrics_collector = MetricsCollector() if MONITORING_ENABLED else None
+
+# Authentication
+token_auth = TokenAuth() if AUTH_ENABLED else None
+rate_limiter = RateLimiter() if AUTH_ENABLED else None
+
 
 # ============================================================================
 # WebSocket Handlers
@@ -92,8 +117,13 @@ def websocket_handler(ws, client_id):
     if collab_bridge:
         collab_bridge.register_ws_connection(ws, client_id)
 
+    # Update metrics
     metrics['total_connections'] += 1
     metrics['active_connections'] = sum(len(conns) for conns in ws_connections.values())
+
+    # Record monitoring metrics
+    if metrics_collector:
+        metrics_collector.record_connection_open(client_id)
 
     try:
         # Send connection confirmation
@@ -140,6 +170,11 @@ def websocket_handler(ws, client_id):
             del ws_connections[client_id]
 
         metrics['active_connections'] = sum(len(conns) for conns in ws_connections.values())
+
+        # Record monitoring metrics
+        if metrics_collector:
+            metrics_collector.record_connection_close(client_id)
+
         logger.info(f"WebSocket connection closed: {client_id}")
 
 
@@ -306,6 +341,21 @@ def handle_message_ack(client_id, ack_data):
 def http_send():
     """HTTP endpoint for sending messages (backward compatible)"""
     try:
+        # Rate limiting
+        if rate_limiter:
+            client_id = request.headers.get('X-Client-ID', request.remote_addr)
+            if not rate_limiter.is_allowed(client_id):
+                return jsonify({'error': 'Rate limit exceeded'}), 429
+
+        # Authentication (optional)
+        if token_auth:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header[7:]
+                verified_client = token_auth.verify_token(token)
+                if not verified_client:
+                    return jsonify({'error': 'Invalid token'}), 401
+
         data = request.json
 
         from_client = data.get('from')
@@ -319,6 +369,7 @@ def http_send():
         # Create message
         msg_id = f"msg-{int(time.time()*1000)}"
         timestamp = datetime.now(timezone.utc).isoformat()
+        send_time = time.time()
 
         msg = {
             'id': msg_id,
@@ -337,11 +388,21 @@ def http_send():
 
         deliver_message(msg)
 
+        # Record monitoring metrics
+        if metrics_collector:
+            latency_ms = (time.time() - send_time) * 1000
+            metrics_collector.record_message(from_client, to_client, latency_ms)
+
         return jsonify({'status': 'sent', 'message_id': msg_id}), 200
 
     except Exception as e:
         logger.error(f"Error in /api/send: {e}")
         metrics['errors'] += 1
+
+        # Record error in monitoring
+        if metrics_collector:
+            metrics_collector.record_message_error('http_send_error')
+
         return jsonify({'error': str(e)}), 500
 
 
@@ -432,7 +493,22 @@ def clear_messages():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({'status': 'healthy'}), 200
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now(timezone.utc).isoformat()}), 200
+
+
+@app.route('/metrics', methods=['GET'])
+def prometheus_metrics():
+    """Prometheus metrics endpoint"""
+    if not MONITORING_ENABLED:
+        return jsonify({'error': 'Monitoring not enabled'}), 503
+
+    try:
+        from prometheus_client import generate_latest, REGISTRY
+        from flask import Response
+        return Response(generate_latest(REGISTRY), mimetype='text/plain')
+    except Exception as e:
+        logger.error(f"Metrics generation failed: {e}")
+        return jsonify({'error': 'Metrics unavailable'}), 500
 
 
 # ============================================================================
