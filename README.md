@@ -21,6 +21,39 @@ I offer consulting for multi-agent systems:
 
 ---
 
+## 🎉 What's New in v1.3.0
+
+**Collaboration Features - Multiple Claudes Working Together!**
+
+- ✅ **Collaboration Rooms** - Create rooms where Claudes coordinate in real-time
+- ✅ **Enhanced Voting** - Democratic decisions (simple majority, consensus, veto, weighted)
+- ✅ **Sub-Channels** - Focused discussions like Discord channels
+- ✅ **File Sharing** - Exchange code and documents between Claudes
+- ✅ **Code Execution Sandbox** - Run Python/JavaScript/Bash collaboratively
+- ✅ **Kanban Board** - Visual task tracking with dependencies
+- ✅ **GitHub Integration** - Create issues and PRs from room decisions
+
+**Example:**
+```python
+# 3 Claudes collaborating on a project
+room_id = code.create_room("Build Trading Bot")
+desktop1.join_room(room_id, role="coder")
+desktop2.join_room(room_id, role="reviewer")
+
+# Vote on decisions
+dec_id = code.propose_decision("Use FastAPI", vote_type="consensus")
+desktop1.vote(dec_id, approve=True)
+desktop2.vote(dec_id, approve=True)  # Approved! ✅
+
+# Execute code collaboratively
+result = desktop1.execute_code("print('Hello!')", language="python")
+# All room members see the output instantly
+```
+
+[See full collaboration docs →](#-collaboration-features-v130)
+
+---
+
 ![Demo](demo_workflow.gif)
 
 **The problem:** You're coding in Claude Code while researching in Browser Claude. You copy-paste between them. It's 2026.
@@ -158,35 +191,50 @@ c.send('browser', 'command', {
 ## 🏗️ Architecture
 
 ```
-┌──────────────────┐
-│ Claude Code CLI  │  (Your Python scripts)
-└────────┬─────────┘
-         │
-    ┌────▼────────┐
-    │ HTTP Server │  ← localhost:5001
-    │ Message Bus │  ← 100-msg queue
-    └────┬────────┘
-         │
-    ┌────▼────────────┐
-    │  Chrome Ext     │  ← Manifest v3
-    │  (content.js)   │  ← CSP-compliant
-    └────┬────────────┘
-         │
-    ┌────▼────────────┐
-    │ Browser Claude  │  ← claude.ai
-    │ (DOM manip)     │  ← Response extraction
-    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Collaboration Hub (v1.3)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Room 1     │  │   Room 2     │  │   Room 3     │          │
+│  │ (Topic A)    │  │ (Topic B)    │  │ (Topic C)    │          │
+│  │ - Voting     │  │ - Code Exec  │  │ - Files      │          │
+│  │ - Channels   │  │ - Kanban     │  │ - GitHub     │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         └──────────────────┼──────────────────┘                 │
+└─────────────────────────────┼────────────────────────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │   WebSocket Server│  ← localhost:5001
+                    │   Message Bus     │  ← Real-time broadcast
+                    │   (v1.3.0)        │  ← 500-msg queue
+                    └─────────┬─────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+      ┌─────▼─────┐    ┌──────▼──────┐   ┌────▼──────┐
+      │  Code     │    │   Browser   │   │  Desktop  │
+      │  Claude   │    │   Claude    │   │  Claude   │
+      │           │    │             │   │           │
+      │ (Python)  │    │  (Chrome    │   │(Clipboard)│
+      │           │    │  Extension) │   │           │
+      └───────────┘    └─────────────┘   └───────────┘
 ```
 
-**Flow:**
-1. Python code → HTTP POST → Message bus
-2. Extension polls bus → Receives message
-3. Extension types into claude.ai → Submits
-4. Claude responds → Extension extracts response
-5. Extension → HTTP POST → Message bus
-6. Python code polls bus → Receives response
+**Core Flow:**
+1. Python code → WebSocket → Message bus
+2. Extension receives → Types into claude.ai
+3. Claude responds → Extension extracts
+4. Response → WebSocket → All clients receive
 
-**Latency:** ~2-5 seconds end-to-end
+**Collaboration Flow (NEW in v1.3):**
+1. Any Claude creates room → All can join
+2. Messages broadcast to all room members instantly
+3. Voting, file sharing, code execution all in real-time
+4. Kanban board tracks tasks across all Claudes
+5. GitHub integration links decisions → issues/PRs
+
+**Latency:**
+- Message delivery: <100ms (WebSocket)
+- End-to-end with Claude: ~2-5 seconds
 
 ---
 
@@ -488,6 +536,149 @@ eventSource.addEventListener('message_received', (e) => {
 
 ---
 
+## 🤝 Collaboration Features (v1.3.0)
+
+**NEW:** Multiple Claudes can now collaborate in real-time with zero manual coordination!
+
+### **Collaboration Rooms** - Multi-Claude Coordination
+Create rooms where multiple Claude instances work together:
+
+```python
+from code_client_collab import CodeClientCollab
+
+# Connect clients
+code = CodeClientCollab("claude-code")
+desktop1 = CodeClientCollab("claude-desktop-1")
+desktop2 = CodeClientCollab("claude-desktop-2")
+
+# Create room
+room_id = code.create_room("Build Trading Bot", role="coordinator")
+
+# Others join
+desktop1.join_room(room_id, role="coder")
+desktop2.join_room(room_id, role="reviewer")
+
+# Create focused channels
+code_ch = code.create_channel("code", "Development")
+test_ch = code.create_channel("testing", "QA")
+
+# Collaborate!
+code.send_to_room("Let's start coding!", channel=code_ch)
+desktop1.send_to_room("Working on momentum strategy", channel=code_ch)
+```
+
+### **Enhanced Voting** - Democratic Decisions
+Multiple voting modes for group decisions:
+
+```python
+# Simple majority (>50%)
+dec_id = code.propose_decision("Use FastAPI for backend", vote_type="simple_majority")
+
+# Consensus mode (100% required)
+dec_id = code.propose_decision("Delete production data", vote_type="consensus")
+
+# Vote
+desktop1.vote(dec_id, approve=True)
+desktop2.vote(dec_id, approve=True)
+
+# Veto power
+desktop1.vote(dec_id, veto=True)  # Blocks decision immediately
+```
+
+### **File Sharing** - Exchange Code & Docs
+Share files between Claude instances:
+
+```python
+# Upload file
+file_id = code.upload_file("trading_strategy.py", channel="code")
+
+# Other Claudes can access it
+# File is stored in room with metadata
+```
+
+### **Code Execution Sandbox** - Run Code Collaboratively
+Execute Python, JavaScript, or Bash in a shared sandbox:
+
+```python
+# Execute Python code
+result = desktop1.execute_code(
+    code="""
+print('Hello from collaborative Python!')
+print(2 + 2)
+for i in range(3):
+    print(f'Count: {i}')
+    """,
+    language="python"
+)
+
+# Result posted to channel automatically
+print(result['output'])       # "Hello from collaborative Python!\n4\n..."
+print(result['exit_code'])    # 0
+print(result['execution_time_ms'])  # e.g., 23.5
+```
+
+### **Kanban Board** - Visual Task Tracking
+Coordinate work with a built-in Kanban board:
+
+```python
+from kanban_board import KanbanBoardManager, TaskPriority, TaskStatus
+
+manager = KanbanBoardManager()
+board_id = manager.create_board("Trading Bot Development")
+board = manager.get_board(board_id)
+
+# Create task
+task_id = board.create_task(
+    "Implement RSI indicator",
+    "Calculate 14-period RSI with overbought/oversold levels",
+    created_by="claude-code",
+    priority=TaskPriority.HIGH,
+    assignee="claude-desktop-1",
+    estimated_minutes=60
+)
+
+# Move through workflow
+board.move_task(task_id, TaskStatus.IN_PROGRESS)
+board.add_time(task_id, 45)
+board.add_comment(task_id, "claude-desktop-1", "RSI working, testing now")
+board.move_task(task_id, TaskStatus.REVIEW)
+board.move_task(task_id, TaskStatus.DONE)
+
+# Analytics
+analytics = board.get_analytics()
+print(f"Completion rate: {analytics['completion_rate']}%")
+print(f"Total time: {analytics['total_time_spent']} minutes")
+```
+
+### **GitHub Integration** - Create Issues & PRs
+Link collaboration to GitHub:
+
+```python
+from github_integration import GitHubIntegration
+
+gh = GitHubIntegration('owner/repo')
+
+# Create issue from decision
+issue = gh.create_issue(
+    title="[Decision] Use FastAPI for backend",
+    body="Decided in collaboration room",
+    created_by="claude-code",
+    labels=['decision', 'enhancement']
+)
+
+# Create PR from task
+pr = gh.create_pr(
+    title="Implement RSI indicator",
+    body="Task completed in collaboration room",
+    source_branch="feature/rsi",
+    reviewers=['teammate']
+)
+```
+
+**See [IMPROVEMENTS_IMPLEMENTED.md](IMPROVEMENTS_IMPLEMENTED.md) for complete documentation**
+
+---
+
 ## 🛣️ Roadmap
 
 **v1.1 (Completed):**
@@ -505,8 +696,17 @@ eventSource.addEventListener('message_received', (e) => {
 - [x] Enhanced metrics (Prometheus)
 - [x] Server-Sent Events
 
-**v1.3 (Planned):**
-- [ ] Desktop Claude integration (PyAutoGUI MCP)
+**v1.3 (Completed):**
+- [x] Collaboration rooms (multi-Claude coordination)
+- [x] Enhanced voting (consensus, veto, weighted, quorum)
+- [x] Sub-channels (focused discussions)
+- [x] File sharing between Claudes
+- [x] Code execution sandbox (Python, JavaScript, Bash)
+- [x] Kanban board integration
+- [x] GitHub integration (issues, PRs)
+- [x] Desktop Claude integration (clipboard-based)
+
+**v1.4 (Planned):**
 - [ ] Multi-tab support (route to specific conversations)
 - [ ] Artifact extraction (get charts, code blocks, etc.)
 - [ ] File upload automation
@@ -514,7 +714,10 @@ eventSource.addEventListener('message_received', (e) => {
 - [ ] End-to-end encryption
 - [ ] PostgreSQL persistence
 - [ ] React admin dashboard
-- [ ] Firefox & Safari extensions
+- [ ] Voice channels (STT + TTS)
+- [ ] AI summarization of discussions
+- [ ] Message threading
+- [ ] Screen sharing between Claudes
 
 ---
 
