@@ -2,11 +2,13 @@
 Multi-Claude Message Bus v2
 Enhanced with: logging, error handling, persistence, metrics
 """
+import os
 import json
 import time
 import threading
 import sqlite3
 import logging
+import secrets
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -25,12 +27,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+# Restrict CORS to localhost only for security
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:*", "http://127.0.0.1:*"]
+    }
+})
 
 # Configuration
 MAX_QUEUE_SIZE = 500
 DB_PATH = 'message_bus.db'
 PERSIST_ENABLED = True
+
+# Security: Admin token from environment variable or auto-generated
+ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', secrets.token_urlsafe(32))
+if not os.getenv('ADMIN_TOKEN'):
+    logger.warning(
+        f"No ADMIN_TOKEN environment variable set. Using auto-generated token.\n"
+        f"Set ADMIN_TOKEN environment variable in production.\n"
+        f"Current token (save this): {ADMIN_TOKEN}"
+    )
 
 # In-memory queue (fast access)
 message_queue = deque(maxlen=MAX_QUEUE_SIZE)
@@ -349,7 +365,9 @@ def clear_messages():
     """Clear message queue (admin endpoint)"""
     try:
         auth = request.headers.get('Authorization')
-        if auth != 'Bearer admin-token':  # Simple auth - replace with real auth in production
+        expected_auth = f'Bearer {ADMIN_TOKEN}'
+        if auth != expected_auth:
+            logger.warning(f"Unauthorized clear attempt from {request.remote_addr}")
             return jsonify({"error": "Unauthorized"}), 401
 
         with message_lock:

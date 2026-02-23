@@ -72,6 +72,12 @@ class CollabWSBridge:
         - vote: Vote on decision
         - get_messages: Get room messages
         - list_rooms: List all rooms
+        - send_critique: Send structured critique (THINK-TANK)
+        - propose_alternative: Propose alternative decision (THINK-TANK)
+        - add_debate_argument: Add pro/con argument (THINK-TANK)
+        - get_debate_summary: Get debate summary (THINK-TANK)
+        - propose_amendment: Propose amendment to decision (THINK-TANK)
+        - accept_amendment: Accept amendment (THINK-TANK)
 
         Args:
             ws: WebSocket connection
@@ -119,6 +125,25 @@ class CollabWSBridge:
 
             elif action == 'get_summary':
                 return self._get_summary(message)
+
+            # THINK-TANK FEATURES
+            elif action == 'send_critique':
+                return self._send_critique(client_id, message)
+
+            elif action == 'propose_alternative':
+                return self._propose_alternative(client_id, message)
+
+            elif action == 'add_debate_argument':
+                return self._add_debate_argument(client_id, message)
+
+            elif action == 'get_debate_summary':
+                return self._get_debate_summary(message)
+
+            elif action == 'propose_amendment':
+                return self._propose_amendment(client_id, message)
+
+            elif action == 'accept_amendment':
+                return self._accept_amendment(message)
 
             else:
                 return {
@@ -403,6 +428,167 @@ class CollabWSBridge:
                     ws.send(json.dumps(payload))
                 except Exception as e:
                     logger.error(f"Broadcast error to {client_id}: {e}")
+
+    # THINK-TANK ACTION HANDLERS
+
+    def _send_critique(self, client_id: str, message: Dict) -> Dict:
+        """Send structured critique"""
+        room_id = message.get('room_id')
+        target_message_id = message.get('target_message_id')
+        critique_text = message.get('critique_text')
+        severity = message.get('severity', 'suggestion')
+        channel = message.get('channel', 'main')
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        critique_msg = room.send_critique(
+            client_id,
+            target_message_id,
+            critique_text,
+            severity,
+            channel
+        )
+
+        return {
+            'status': 'success',
+            'critique_id': critique_msg.id,
+            'timestamp': critique_msg.timestamp.isoformat()
+        }
+
+    def _propose_alternative(self, client_id: str, message: Dict) -> Dict:
+        """Propose alternative to decision"""
+        room_id = message.get('room_id')
+        original_decision_id = message.get('original_decision_id')
+        alternative_text = message.get('alternative_text')
+        vote_type_str = message.get('vote_type')
+        channel = message.get('channel', 'main')
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        # Parse vote type if provided
+        vote_type = None
+        if vote_type_str:
+            try:
+                vote_type = VoteType[vote_type_str.upper()]
+            except KeyError:
+                return {'status': 'error', 'error': f'Invalid vote_type: {vote_type_str}'}
+
+        alt_id = room.propose_alternative(
+            client_id,
+            original_decision_id,
+            alternative_text,
+            vote_type,
+            channel
+        )
+
+        return {
+            'status': 'success',
+            'alternative_id': alt_id
+        }
+
+    def _add_debate_argument(self, client_id: str, message: Dict) -> Dict:
+        """Add debate argument"""
+        room_id = message.get('room_id')
+        decision_id = message.get('decision_id')
+        position = message.get('position')  # "pro" or "con"
+        argument_text = message.get('argument_text')
+        evidence = message.get('evidence', [])
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        arg_id = room.add_debate_argument(
+            client_id,
+            decision_id,
+            position,
+            argument_text,
+            evidence
+        )
+
+        return {
+            'status': 'success',
+            'argument_id': arg_id
+        }
+
+    def _get_debate_summary(self, message: Dict) -> Dict:
+        """Get debate summary"""
+        room_id = message.get('room_id')
+        decision_id = message.get('decision_id')
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        summary = room.get_debate_summary(decision_id)
+
+        # Convert DebateArgument objects to dicts
+        return {
+            'status': 'success',
+            'debate': {
+                'pro': [
+                    {
+                        'id': arg.id,
+                        'from': arg.from_client,
+                        'text': arg.argument_text,
+                        'evidence': arg.supporting_evidence,
+                        'timestamp': arg.timestamp.isoformat()
+                    }
+                    for arg in summary['pro']
+                ],
+                'con': [
+                    {
+                        'id': arg.id,
+                        'from': arg.from_client,
+                        'text': arg.argument_text,
+                        'evidence': arg.supporting_evidence,
+                        'timestamp': arg.timestamp.isoformat()
+                    }
+                    for arg in summary['con']
+                ],
+                'total_pro': summary['total_pro'],
+                'total_con': summary['total_con']
+            }
+        }
+
+    def _propose_amendment(self, client_id: str, message: Dict) -> Dict:
+        """Propose amendment to decision"""
+        room_id = message.get('room_id')
+        decision_id = message.get('decision_id')
+        amendment_text = message.get('amendment_text')
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        amend_id = room.propose_amendment(
+            client_id,
+            decision_id,
+            amendment_text
+        )
+
+        return {
+            'status': 'success',
+            'amendment_id': amend_id
+        }
+
+    def _accept_amendment(self, message: Dict) -> Dict:
+        """Accept amendment"""
+        room_id = message.get('room_id')
+        decision_id = message.get('decision_id')
+        amendment_id = message.get('amendment_id')
+
+        room = self.hub.get_room(room_id)
+        if not room:
+            return {'status': 'error', 'error': 'Room not found'}
+
+        room.accept_amendment(decision_id, amendment_id)
+
+        return {'status': 'success'}
 
 
 # Example client extension

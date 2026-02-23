@@ -3,6 +3,7 @@
 WebSocket-enabled Message Bus Server
 Real-time bi-directional communication (upgrade from polling)
 """
+import os
 import json
 import time
 import uuid

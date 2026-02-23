@@ -88,6 +88,7 @@ class RoomMessage:
     type: str = "message"
     channel: str = "main"  # Channel/sub-room
     attachments: List[Dict] = field(default_factory=list)
+    critiques: List[str] = field(default_factory=list)  # Critique message IDs
 
 
 @dataclass
@@ -132,6 +133,32 @@ class EnhancedDecision:
     approved: bool = False
     vetoed: bool = False
     total_weight: float = 0  # For weighted voting
+    alternatives: List[str] = field(default_factory=list)  # Alternative decision IDs
+    amendments: List[Dict] = field(default_factory=list)  # Proposed amendments
+
+
+@dataclass
+class Critique:
+    """Structured critique of a message or decision"""
+    id: str
+    target_message_id: str
+    from_client: str
+    critique_text: str
+    severity: str  # "blocking", "major", "minor", "suggestion"
+    timestamp: datetime
+    resolved: bool = False
+
+
+@dataclass
+class DebateArgument:
+    """Structured argument in debate"""
+    id: str
+    decision_id: str
+    from_client: str
+    position: str  # "pro" or "con"
+    argument_text: str
+    supporting_evidence: List[str] = field(default_factory=list)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class CollaborationChannel:
@@ -184,6 +211,8 @@ class EnhancedCollaborationRoom:
         self.tasks = []
         self.files: Dict[str, SharedFile] = {}
         self.code_executions: List[CodeExecution] = []
+        self.critiques: List[Critique] = []
+        self.debate_arguments: List[DebateArgument] = []
 
         # Memory management
         self.max_total_file_size = max_total_file_size_mb * 1024 * 1024  # Convert MB to bytes
@@ -797,6 +826,263 @@ class EnhancedCollaborationRoom:
     def on_message(self, callback: Callable):
         """Register callback for new messages"""
         self.message_callbacks.append(callback)
+
+    def _find_message(self, message_id: str) -> Optional[RoomMessage]:
+        """Find message by ID across all channels"""
+        for channel in self.channels.values():
+            for msg in channel.messages:
+                if msg.id == message_id:
+                    return msg
+        return None
+
+    def send_critique(self, from_client: str, target_message_id: str,
+                     critique_text: str, severity: str = "suggestion",
+                     channel: str = "main") -> RoomMessage:
+        """
+        Send structured critique of another message
+
+        Args:
+            from_client: Critic
+            target_message_id: Message being critiqued
+            critique_text: Feedback content
+            severity: "blocking", "major", "minor", "suggestion"
+            channel: Target channel
+
+        Returns:
+            Critique message
+        """
+        # Validate target exists
+        target_msg = self._find_message(target_message_id)
+        if not target_msg:
+            raise ValueError(f"Target message {target_message_id} not found")
+
+        # Validate severity
+        if severity not in ["blocking", "major", "minor", "suggestion"]:
+            raise ValueError(f"Invalid severity: {severity}")
+
+        # Create critique message
+        severity_emoji = {
+            "blocking": "🚫",
+            "major": "⚠️",
+            "minor": "💡",
+            "suggestion": "💬"
+        }
+
+        critique_msg = self.send_message(
+            from_client,
+            f"{severity_emoji[severity]} CRITIQUE of {target_msg.from_client}'s message:\n"
+            f"Severity: {severity.upper()}\n\n{critique_text}",
+            msg_type="critique",
+            reply_to=target_message_id,
+            channel=channel
+        )
+
+        # Track critique
+        critique = Critique(
+            id=critique_msg.id,
+            target_message_id=target_message_id,
+            from_client=from_client,
+            critique_text=critique_text,
+            severity=severity,
+            timestamp=critique_msg.timestamp,
+            resolved=False
+        )
+        self.critiques.append(critique)
+
+        # Add to target message's critique list
+        target_msg.critiques.append(critique_msg.id)
+
+        return critique_msg
+
+    def propose_alternative(self, from_client: str, original_decision_id: str,
+                           alternative_text: str, vote_type: VoteType = None,
+                           channel: str = "main") -> str:
+        """
+        Propose alternative to existing decision
+
+        Args:
+            from_client: Proposer
+            original_decision_id: Decision being countered
+            alternative_text: Alternative proposal
+            vote_type: Voting mechanism (inherits from original if None)
+            channel: Target channel
+
+        Returns:
+            Alternative decision ID
+        """
+        # Find original decision
+        original = next((d for d in self.decisions if d.id == original_decision_id), None)
+        if not original:
+            raise ValueError(f"Decision {original_decision_id} not found")
+
+        # Use same vote type as original
+        if vote_type is None:
+            vote_type = original.vote_type
+
+        # Create alternative decision message
+        alt_msg = self.send_message(
+            from_client,
+            f"🔄 ALTERNATIVE to decision {original_decision_id[:8]}:\n"
+            f"Original: {original.text}\n"
+            f"Alternative: {alternative_text}",
+            msg_type="counter_proposal",
+            reply_to=original_decision_id,
+            channel=channel
+        )
+
+        # Create decision for alternative
+        alt_decision = EnhancedDecision(
+            id=alt_msg.id,
+            text=alternative_text,
+            proposed_by=from_client,
+            proposed_at=alt_msg.timestamp,
+            vote_type=vote_type,
+            required_votes=original.required_votes
+        )
+        self.decisions.append(alt_decision)
+
+        # Link to original
+        original.alternatives.append(alt_msg.id)
+
+        # Persist decision
+        if self.persistence:
+            self.persistence.save_decision(
+                alt_msg.id, self.room_id, alternative_text, from_client,
+                alt_msg.timestamp, vote_type.value, original.required_votes
+            )
+
+        return alt_msg.id
+
+    def add_debate_argument(self, from_client: str, decision_id: str,
+                           position: str, argument_text: str,
+                           evidence: List[str] = None) -> str:
+        """
+        Add pro/con argument to decision debate
+
+        Args:
+            from_client: Arguer
+            decision_id: Decision being debated
+            position: "pro" or "con"
+            argument_text: The argument
+            evidence: Supporting evidence (URLs, file IDs, etc.)
+
+        Returns:
+            Argument ID
+        """
+        if position not in ["pro", "con"]:
+            raise ValueError("Position must be 'pro' or 'con'")
+
+        # Validate decision exists
+        decision = next((d for d in self.decisions if d.id == decision_id), None)
+        if not decision:
+            raise ValueError(f"Decision {decision_id} not found")
+
+        # Create argument message
+        emoji = "👍" if position == "pro" else "👎"
+        msg = self.send_message(
+            from_client,
+            f"{emoji} {position.upper()} argument:\n{argument_text}",
+            msg_type="debate_argument",
+            reply_to=decision_id
+        )
+
+        # Track argument
+        arg = DebateArgument(
+            id=msg.id,
+            decision_id=decision_id,
+            from_client=from_client,
+            position=position,
+            argument_text=argument_text,
+            supporting_evidence=evidence or []
+        )
+        self.debate_arguments.append(arg)
+
+        return msg.id
+
+    def get_debate_summary(self, decision_id: str) -> Dict:
+        """Get pro/con summary for decision"""
+        args = [a for a in self.debate_arguments if a.decision_id == decision_id]
+        return {
+            'pro': [a for a in args if a.position == "pro"],
+            'con': [a for a in args if a.position == "con"],
+            'total_pro': len([a for a in args if a.position == "pro"]),
+            'total_con': len([a for a in args if a.position == "con"])
+        }
+
+    def propose_amendment(self, from_client: str, decision_id: str,
+                         amendment_text: str) -> str:
+        """
+        Propose amendment to existing decision
+
+        Args:
+            from_client: Proposer
+            decision_id: Decision to amend
+            amendment_text: Proposed changes
+
+        Returns:
+            Amendment message ID
+        """
+        decision = next((d for d in self.decisions if d.id == decision_id), None)
+        if not decision:
+            raise ValueError(f"Decision {decision_id} not found")
+
+        # Create amendment message
+        msg = self.send_message(
+            from_client,
+            f"📝 AMENDMENT to decision {decision_id[:8]}:\n{amendment_text}",
+            msg_type="amendment",
+            reply_to=decision_id
+        )
+
+        # Track amendment
+        decision.amendments.append({
+            'id': msg.id,
+            'from': from_client,
+            'text': amendment_text,
+            'accepted': False,
+            'timestamp': msg.timestamp.isoformat()
+        })
+
+        return msg.id
+
+    def accept_amendment(self, decision_id: str, amendment_id: str):
+        """Accept amendment and update decision text"""
+        decision = next((d for d in self.decisions if d.id == decision_id), None)
+        if not decision:
+            raise ValueError(f"Decision {decision_id} not found")
+
+        # Find amendment
+        amendment = next((a for a in decision.amendments if a['id'] == amendment_id), None)
+        if not amendment:
+            raise ValueError(f"Amendment {amendment_id} not found")
+
+        # Update decision text
+        decision.text = amendment['text']
+        amendment['accepted'] = True
+
+        # Persist update
+        if self.persistence:
+            # Update decision text in database
+            pass  # TODO: Add persistence method for amendment acceptance
+
+        # Broadcast update
+        self._broadcast_system_message(
+            f"✅ Amendment {amendment_id[:8]} accepted for decision {decision_id[:8]}\n"
+            f"New text: {amendment['text']}"
+        )
+
+    def get_critiques_for_message(self, message_id: str) -> List[Critique]:
+        """Get all critiques for a specific message"""
+        return [c for c in self.critiques if c.target_message_id == message_id]
+
+    def resolve_critique(self, critique_id: str):
+        """Mark critique as resolved"""
+        critique = next((c for c in self.critiques if c.id == critique_id), None)
+        if critique:
+            critique.resolved = True
+            self._broadcast_system_message(
+                f"✅ Critique {critique_id[:8]} marked as resolved"
+            )
 
 
 class EnhancedCollaborationHub:
