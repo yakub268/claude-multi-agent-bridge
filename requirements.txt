@@ -1,38 +1,24 @@
-# Core dependencies (pinned versions for reproducibility)
+# Core dependencies
 Flask==3.0.2
-flask-sock==0.7.0
 flask-cors==4.0.0
 requests==2.31.0
-websocket-client==1.7.0
 
-# Clipboard integration (desktop client)
-pyperclip==1.8.2
-
-# AI integration
-openai==1.12.0  # For AI summarization
+# MCP server wrapper
+mcp>=1.0.0
 
 # Production servers
 gunicorn==21.2.0  # Linux/Mac
-gevent==24.2.1  # WebSocket support for gunicorn
-waitress==3.0.0  # Windows
+waitress==3.0.0   # Windows
 
-# Monitoring
-prometheus-client==0.20.0
+# Optional: WebSocket support for gunicorn
+gevent==24.2.1
 
-# Optional: Redis for distributed state
+# Optional: Redis backend for distributed/multi-machine setups
 redis==5.0.1
 
-# Optional: Desktop automation (alternative to clipboard)
-pyautogui==0.9.54
-pytesseract==0.3.10
-Pillow==10.2.0
-psutil==5.9.8
+# Optional: Desktop client
+pyperclip==1.8.2
 
-# Optional: Windows window management
-pygetwindow==0.0.9; sys_platform == 'win32'
-
-# Development/Testing
+# Development
 pytest==8.0.2
-pytest-asyncio==0.23.5
 black==24.2.0
-flake8==7.0.0

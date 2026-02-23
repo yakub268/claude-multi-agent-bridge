@@ -1,171 +1,204 @@
 /**
- * Content Script V2 - CSP-safe version
- * No dynamic script injection, direct DOM manipulation
+ * Content Script — SSE real-time version
+ * Replaced HTTP polling (1s interval) with EventSource push.
+ * Messages arrive instantly. CPU/network usage drops to near-zero at idle.
  */
 
 const BUS_URL = 'http://localhost:5001';
 const CLIENT_ID = 'browser';
 
-console.log('[Claude Bridge] Content script loaded');
+console.log('[Claude Bridge] Content script loaded (SSE mode)');
 
-let lastTimestamp = null;
 let isWaitingForResponse = false;
 let lastSentPrompt = null;
+let lastSeq = 0;
+let eventSource = null;
 
-// Direct DOM manipulation functions (no CSP issues)
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+
 function setInputText(text) {
+  // Try contenteditable first (standard claude.ai)
   const input = document.querySelector('[contenteditable="true"]');
   if (input) {
-    input.textContent = text;
-    input.dispatchEvent(new Event('input', {bubbles: true}));
+    // React-compatible input dispatch
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLElement.prototype, 'textContent'
+    )?.set;
+    if (nativeInputValueSetter) {
+      nativeInputValueSetter.call(input, text);
+    } else {
+      input.textContent = text;
+    }
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+    return true;
+  }
+  // Fallback: textarea
+  const ta = document.querySelector('textarea');
+  if (ta) {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+    if (setter) setter.call(ta, text);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   }
   return false;
 }
 
 function submitInput() {
-  const submitBtn = document.querySelector('button[aria-label*="Send"]');
-  if (submitBtn && !submitBtn.disabled) {
-    submitBtn.click();
+  const btn = document.querySelector('button[aria-label*="Send"], button[data-testid*="send"]');
+  if (btn && !btn.disabled) { btn.click(); return true; }
+  // Fallback: Enter key
+  const input = document.querySelector('[contenteditable="true"], textarea');
+  if (input) {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     return true;
   }
   return false;
 }
 
 function extractLastResponse() {
-  // Claude responses are in divs with class "font-claude-response"
-  const responseDivs = document.querySelectorAll('.font-claude-response');
-
-  // Get the last Claude response
-  if (responseDivs.length > 0) {
-    const lastResponse = responseDivs[responseDivs.length - 1];
-    const paragraphs = lastResponse.querySelectorAll('p');
-
-    if (paragraphs.length > 0) {
-      const text = Array.from(paragraphs)
-        .map(p => p.textContent.trim())
-        .filter(t => t && t !== 'undefined' && !t.includes('Thinking'))
-        .join('\n\n');
-
-      if (text.length > 0) {
-        return text;
-      }
-    }
+  // Current claude.ai DOM: responses in .font-claude-message or data-is-streaming=false
+  const selectors = [
+    '.font-claude-message',
+    '.font-claude-response',
+    '[data-is-streaming="false"] .prose',
+    '.prose',
+  ];
+  for (const sel of selectors) {
+    const nodes = document.querySelectorAll(sel);
+    if (!nodes.length) continue;
+    const last = nodes[nodes.length - 1];
+    const text = last.innerText?.trim();
+    if (text && text.length > 10) return text;
   }
-
   return null;
 }
 
-// Poll message bus
-async function pollMessages() {
+function isStreaming() {
+  // Detect if Claude is still generating
+  if (document.querySelector('[data-is-streaming="true"]')) return true;
+  const status = [...document.querySelectorAll('[role="status"]')];
+  return status.some(el => /thinking|writing|generating/i.test(el.textContent));
+}
+
+// ── Message bus ───────────────────────────────────────────────────────────────
+
+async function sendToBus(type, payload) {
   try {
-    const params = new URLSearchParams({to: CLIENT_ID});
-    if (lastTimestamp) {
-      params.append('since', lastTimestamp);
-    }
-
-    const response = await fetch(`${BUS_URL}/api/messages?${params}`);
-    const data = await response.json();
-
-    for (const msg of data.messages || []) {
-      lastTimestamp = msg.timestamp;
-      handleMessage(msg);
-    }
-  } catch (err) {
-    // Silent fail
+    const resp = await fetch(`${BUS_URL}/api/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: CLIENT_ID, to: 'all', type, payload }),
+    });
+    const data = await resp.json();
+    if (data.seq) lastSeq = Math.max(lastSeq, data.seq);
+  } catch (e) {
+    console.warn('[Claude Bridge] Send failed:', e.message);
   }
-
-  setTimeout(pollMessages, 1000);
 }
 
 function handleMessage(msg) {
-  console.log('[Claude Bridge] Received:', msg);
+  if (msg.seq) lastSeq = Math.max(lastSeq, msg.seq);
 
-  if (msg.type === 'command' && msg.payload.action === 'run_prompt') {
+  // Only process messages targeting us
+  if (msg.to !== CLIENT_ID && msg.to !== 'all') return;
+  // Ignore our own messages
+  if (msg.from === CLIENT_ID) return;
+
+  console.log('[Claude Bridge] →', msg.type, msg.payload);
+
+  if (msg.type === 'command' && msg.payload?.action === 'run_prompt') {
     const text = msg.payload.text;
     lastSentPrompt = text;
     isWaitingForResponse = true;
 
-    // Set input and submit
     if (setInputText(text)) {
-      setTimeout(() => {
-        submitInput();
-        console.log('[Claude Bridge] Prompt submitted');
-      }, 100);
+      setTimeout(() => submitInput(), 150);
+    }
+  }
+
+  if (msg.type === 'request' && msg.payload?.text) {
+    const text = msg.payload.text;
+    const requestId = msg.id;
+    lastSentPrompt = text;
+    isWaitingForResponse = true;
+    window.__bridgeRequestId = requestId;
+
+    if (setInputText(text)) {
+      setTimeout(() => submitInput(), 150);
     }
   }
 }
 
-// Watch for responses with MutationObserver
-const observer = new MutationObserver(() => {
-  if (!isWaitingForResponse) return;
+// ── SSE connection ────────────────────────────────────────────────────────────
 
-  // Check if thinking/writing indicator is gone
-  const status = document.querySelectorAll('[role="status"]');
-  const isThinking = Array.from(status).some(el =>
-    el.textContent.toLowerCase().includes('thinking') ||
-    el.textContent.toLowerCase().includes('writing')
+function connectSSE() {
+  if (eventSource) eventSource.close();
+
+  eventSource = new EventSource(
+    `${BUS_URL}/api/subscribe?client=${CLIENT_ID}&since_seq=${lastSeq}`
   );
 
-  if (!isThinking) {
-    // Wait a bit then extract response
-    setTimeout(async () => {
-      const response = extractLastResponse();
+  eventSource.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      handleMessage(msg);
+    } catch (e) {
+      // heartbeat or parse error — ignore
+    }
+  };
 
-      if (response && response.length > 10) {
-        console.log('[Claude Bridge] Extracted response:', response.substring(0, 100) + '...');
+  eventSource.onerror = () => {
+    console.warn('[Claude Bridge] SSE disconnected, reconnecting in 3s...');
+    eventSource.close();
+    setTimeout(connectSSE, 3000);
+  };
 
-        // Send to bus
-        try {
-          await fetch(`${BUS_URL}/api/send`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-              from: CLIENT_ID,
-              to: 'all',
-              type: 'claude_response',
-              payload: {
-                prompt: lastSentPrompt,
-                response: response,
-                timestamp: new Date().toISOString()
-              }
-            })
-          });
+  console.log('[Claude Bridge] SSE connected (since_seq=' + lastSeq + ')');
+}
 
-          console.log('[Claude Bridge] Response sent to bus');
-          isWaitingForResponse = false;
-          lastSentPrompt = null;
-        } catch (err) {
-          console.error('[Claude Bridge] Failed to send:', err);
-        }
+// ── MutationObserver: watch for Claude finishing response ─────────────────────
+
+const observer = new MutationObserver(() => {
+  if (!isWaitingForResponse) return;
+  if (isStreaming()) return;
+
+  // Debounce — wait for DOM to settle
+  clearTimeout(window.__bridgeExtractTimer);
+  window.__bridgeExtractTimer = setTimeout(async () => {
+    if (!isWaitingForResponse) return;
+    const response = extractLastResponse();
+    if (response && response.length > 10) {
+      isWaitingForResponse = false;
+      console.log('[Claude Bridge] Response captured (' + response.length + ' chars)');
+
+      const payload = {
+        text: response,
+        prompt: lastSentPrompt,
+        url: window.location.href,
+      };
+
+      // If this was a request/reply, include reply_to
+      if (window.__bridgeRequestId) {
+        payload.reply_to = window.__bridgeRequestId;
+        payload.request_id = window.__bridgeRequestId;
+        window.__bridgeRequestId = null;
       }
-    }, 1000);
-  }
+
+      await sendToBus('response', payload);
+    }
+  }, 800);
 });
 
-// Start observing
 observer.observe(document.body, {
   childList: true,
-  subtree: true
+  subtree: true,
+  characterData: true,
 });
 
-// Start polling
-pollMessages();
+// ── Boot ──────────────────────────────────────────────────────────────────────
 
-console.log('[Claude Bridge] Polling started');
-console.log('[Claude Bridge] Response observer active');
+// Small delay to let the page fully load
+setTimeout(connectSSE, 500);
 
-// Send ready signal
-fetch(`${BUS_URL}/api/send`, {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({
-    from: CLIENT_ID,
-    to: 'all',
-    type: 'browser_ready',
-    payload: {
-      url: window.location.href,
-      timestamp: new Date().toISOString()
-    }
-  })
-}).catch(() => {});
+// Announce presence
+setTimeout(() => sendToBus('status', { client: CLIENT_ID, ready: true, transport: 'SSE' }), 1000);

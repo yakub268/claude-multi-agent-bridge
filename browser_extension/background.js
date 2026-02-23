@@ -1,37 +1,42 @@
 /**
  * Background Service Worker
- * Manages extension state and message routing
+ * Manages extension lifecycle and message routing.
+ * Content scripts now use SSE directly — background handles sending only.
  */
 
 const BUS_URL = 'http://localhost:5001';
 
 console.log('[Claude Bridge] Background service worker started');
 
-// Listen for messages from content scripts
+// Forward send requests from popup or other extension pages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[Claude Bridge] Message from content script:', request);
-
   if (request.action === 'send') {
-    // Forward to message bus
     fetch(`${BUS_URL}/api/send`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'extension',
-        to: request.to,
-        type: request.type,
-        payload: request.payload
-      })
+        from: request.from || 'extension',
+        to: request.to || 'all',
+        type: request.type || 'message',
+        payload: request.payload || {},
+      }),
     })
-    .then(r => r.json())
-    .then(data => sendResponse(data))
-    .catch(err => sendResponse({status: 'error', error: err.message}));
+      .then(r => r.json())
+      .then(data => sendResponse(data))
+      .catch(err => sendResponse({ status: 'error', error: err.message }));
+    return true;
+  }
 
-    return true;  // Keep channel open for async response
+  if (request.action === 'status') {
+    fetch(`${BUS_URL}/api/status`)
+      .then(r => r.json())
+      .then(data => sendResponse(data))
+      .catch(() => sendResponse({ status: 'offline' }));
+    return true;
   }
 });
 
-// Extension icon click
+// Extension icon click — open popup
 chrome.action.onClicked.addListener((tab) => {
-  console.log('[Claude Bridge] Extension icon clicked');
+  console.log('[Claude Bridge] Extension icon clicked on tab:', tab.id);
 });
