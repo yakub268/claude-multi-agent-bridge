@@ -1,5 +1,6 @@
 # Core dependencies
 Flask==3.0.2
+flask-sock==0.7.0
 flask-cors==4.0.0
 requests==2.31.0
 
