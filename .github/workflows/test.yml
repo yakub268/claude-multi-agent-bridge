@@ -78,12 +78,22 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-asyncio
 
+    - name: Start server
+      run: |
+        python server_ws.py &
+        sleep 5
+        curl -f http://localhost:5001/health || (echo "Server failed to start"; exit 1)
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
     - name: Run integration tests
       run: |
         pytest tests/integration/ -v
       env:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
+        SERVER_PORT: 5001
 
   docker-build:
     runs-on: ubuntu-latest
