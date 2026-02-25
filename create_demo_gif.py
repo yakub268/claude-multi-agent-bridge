@@ -50,7 +50,7 @@ def create_gif():
     print("TO CREATE GIF:")
     print("  1. Use OBS Studio / ShareX / Windows Game Bar to record")
     print("  2. Convert to GIF using: https://gifski.app or ffmpeg")
-    print("  3. Or use: ffmpeg -i recording.mp4 -vf 'fps=10,scale=800:-1' demo.gif")
+    print("  3. Or use: ffmpeg -i recording.mp4 -vf 'fps=10,scale=800:-1' demo.gi")
     print()
     print("ALTERNATIVE - Quick screenshot method:")
     print("  Use Windows Snipping Tool in video mode (Win+Shift+S)")

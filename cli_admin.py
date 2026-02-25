@@ -45,7 +45,7 @@ class BridgeAdmin:
             sys.exit(1)
 
         except requests.exceptions.Timeout:
-            print(f"❌ Error: Request timeout")
+            print("❌ Error: Request timeout")
             sys.exit(1)
 
         except requests.exceptions.HTTPError as e:

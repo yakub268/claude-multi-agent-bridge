@@ -412,24 +412,24 @@ if __name__ == '__main__':
     # Stats
     print("\n" + "=" * 80)
     stats = threading.get_thread_stats(thread.thread_id)
-    print(f"\n📊 Thread Statistics:")
+    print("\n📊 Thread Statistics:")
     for key, value in stats.items():
         print(f"   {key}: {value}")
 
     # Export
     threading.export_thread(thread.thread_id, "test_thread.json", format="json")
     threading.export_thread(thread.thread_id, "test_thread.txt", format="text")
-    print(f"\n✅ Thread exported to test_thread.json and test_thread.txt")
+    print("\n✅ Thread exported to test_thread.json and test_thread.txt")
 
     # Test navigation
-    print(f"\n🧭 Navigation Test:")
+    print("\n🧭 Navigation Test:")
     print(f"   Replies to msg-1: {len(threading.get_replies('msg-1'))} messages")
     print(f"   Parent of msg-6: {threading.get_parent('msg-6').message_id}")
     chain = threading.get_thread_chain("msg-6")
     print(f"   Chain to msg-6: {' → '.join([n.message_id for n in chain])}")
 
     # List all threads
-    print(f"\n📋 All Threads:")
+    print("\n📋 All Threads:")
     for thread_info in threading.list_all_threads():
         print(f"   {thread_info['thread_id']}: {thread_info['message_count']} messages, depth {thread_info['depth']}")
 

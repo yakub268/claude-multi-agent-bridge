@@ -21,7 +21,7 @@ class DemoGifCreator:
 
         # Try to use a nice font, fall back to default
         try:
-            font = ImageFont.truetype("arial.ttf", 20)
+            font = ImageFont.truetype("arial.tt", 20)
         except Exception as e:
             font = ImageFont.load_default()
 
@@ -95,7 +95,7 @@ class DemoGifCreator:
             print("No screenshots to compile!")
             return
 
-        output_path = "demo.gif"
+        output_path = "demo.gi"
 
         # Save as GIF
         self.screenshots[0].save(
@@ -127,7 +127,7 @@ def main():
 
     print()
     print("="*70)
-    print("Done! Check demo.gif")
+    print("Done! Check demo.gi")
     print("="*70)
 
 if __name__ == '__main__':

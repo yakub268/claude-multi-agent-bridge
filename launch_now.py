@@ -24,7 +24,7 @@ class AutoLauncher:
         print(f"\n{'='*70}")
         print(f"📤 {label}")
         print('='*70)
-        print(f"Sending to Browser Claude...")
+        print("Sending to Browser Claude...")
 
         # Send the prompt
         self.client.send('browser', 'command', {

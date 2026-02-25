@@ -17,7 +17,7 @@ def test_system():
     if status.get('status') == 'running':
         print(f"   ✅ Server running ({status.get('message_count', 0)} messages in queue)")
     else:
-        print(f"   ❌ Server not responding")
+        print("   ❌ Server not responding")
         return False
 
     # Test 2: Send messages

@@ -271,10 +271,10 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
 """
 
         result = desktop1.execute_code(test_code, language="python", channel=code_ch)
-        print(f"   ✅ Code executed successfully")
+        print("   ✅ Code executed successfully")
         print(f"   Exit code: {result['exit_code']}")
         print(f"   Execution time: {result['execution_time_ms']}ms")
-        print(f"   Output:")
+        print("   Output:")
         for line in result['output'].split('\n'):
             if line.strip():
                 print(f"      {line}")
@@ -335,7 +335,7 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
     print_step(14, "Viewing room statistics...")
     try:
         stats = code.get_summary()
-        print(f"   Room Activity:")
+        print("   Room Activity:")
         print(f"   • Members: {stats.get('member_count', 0)}")
         print(f"   • Messages: {stats.get('message_count', 0)}")
         print(f"   • Decisions: {stats.get('decision_count', 0)}")

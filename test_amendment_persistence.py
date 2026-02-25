@@ -65,7 +65,7 @@ def test_amendment_persists_to_database():
         # Verify in-memory matches database
         decision = next(d for d in room.decisions if d.id == decision_id)
         assert decision.text == updated_text
-        print(f"✅ In-memory matches database")
+        print("✅ In-memory matches database")
 
         print("\n✅ ALL TESTS PASSED - Amendment persistence works!")
         return True

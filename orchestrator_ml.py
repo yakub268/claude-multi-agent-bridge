@@ -628,7 +628,7 @@ class MLOrchestrator:
         """Generate human-readable reasoning"""
         lines = []
 
-        lines.append(f"Task Analysis:")
+        lines.append("Task Analysis:")
         lines.append(f"  - Estimated: {features.estimated_files} files, {features.estimated_loc} LOC")
         lines.append(f"  - Complexity: {features.num_subtasks} subtasks")
         lines.append(f"  - Parallelization: {features.parallelization_score:.1%}")
@@ -679,7 +679,7 @@ class MLOrchestrator:
             Success status
         """
         print(f"\n{'='*80}")
-        print(f"🎯 EXECUTING COLLABORATION PLAN")
+        print("🎯 EXECUTING COLLABORATION PLAN")
         print(f"{'='*80}\n")
 
         print(f"Strategy: {plan.strategy.value}")
@@ -763,7 +763,7 @@ if __name__ == '__main__':
 
         plan = orchestrator.create_plan(test['task'], test.get('context'))
 
-        print(f"📋 PLAN SUMMARY")
+        print("📋 PLAN SUMMARY")
         print(f"  Strategy: {plan.strategy.value}")
         print(f"  Team: {plan.num_claudes} Claudes, {plan.num_agents} agents")
         print(f"  Duration: {plan.estimated_duration_hours:.1f} hours")

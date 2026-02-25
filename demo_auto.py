@@ -96,13 +96,13 @@ def main():
 
     try:
         code_ch = code.create_channel("code", "Development discussion")
-        print(f"   ✅ Created channel: code")
+        print("   ✅ Created channel: code")
 
         test_ch = code.create_channel("testing", "QA and testing")
-        print(f"   ✅ Created channel: testing")
+        print("   ✅ Created channel: testing")
 
         bugs_ch = code.create_channel("bugs", "Bug tracking")
-        print(f"   ✅ Created channel: bugs")
+        print("   ✅ Created channel: bugs")
     except Exception as e:
         print(f"   ⚠️  Channels: {e}")
         code_ch = test_ch = bugs_ch = "main"
@@ -123,7 +123,7 @@ def main():
 
     try:
         dec1 = code.propose_decision("Use FastAPI for backend framework", vote_type="simple_majority")
-        print(f"   ✅ Decision proposed")
+        print("   ✅ Decision proposed")
         print("   Vote type: Simple Majority (>50%)")
 
         desktop1.vote(dec1, approve=True)
@@ -183,7 +183,7 @@ def main():
         test_code = 'print("Hello from collaborative code execution!")\nprint(f"2 + 2 = {2 + 2}")'
 
         result = desktop1.execute_code(test_code, language="python", channel=code_ch)
-        print(f"   ✅ Code executed successfully")
+        print("   ✅ Code executed successfully")
         print(f"   Exit code: {result['exit_code']}")
         print(f"   Execution time: {result['execution_time_ms']}ms")
         print(f"   Output: {result['output'].strip()}")

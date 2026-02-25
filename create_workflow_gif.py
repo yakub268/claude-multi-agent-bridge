@@ -14,10 +14,10 @@ def create_text_image(text, width=1200, height=200, bg_color=(30, 30, 30), text_
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", font_size)
+        font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.tt", font_size)
     except Exception as e:
         try:
-            font = ImageFont.truetype("arial.ttf", font_size)
+            font = ImageFont.truetype("arial.tt", font_size)
         except Exception as e2:
             logger.warning(f"Could not load TrueType fonts ({e}, {e2}), using default font")
             font = ImageFont.load_default()
@@ -40,8 +40,8 @@ def create_workflow_diagram(width=1200, height=400):
     draw = ImageDraw.Draw(img)
 
     try:
-        title_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 32)
-        font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 24)
+        title_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.tt", 32)
+        font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.tt", 24)
     except Exception as e:
         logger.warning(f"Could not load TrueType fonts ({e}), using default font")
         title_font = font = ImageFont.load_default()
@@ -105,7 +105,7 @@ def create_demo_gif():
     code_img = Image.new('RGB', (1200, 400), (20, 20, 20))
     draw = ImageDraw.Draw(code_img)
     try:
-        font = ImageFont.truetype("C:\\Windows\\Fonts\\consola.ttf", 28)
+        font = ImageFont.truetype("C:\\Windows\\Fonts\\consola.tt", 28)
     except Exception as e:
         logger.warning(f"Could not load consola.ttf ({e}), using default font")
         font = ImageFont.load_default()
@@ -139,7 +139,7 @@ response = c.poll()  # "4" """
     frames.append(create_text_image("github.com/yakub268/claude-multi-agent-bridge", font_size=35, bg_color=(70, 30, 100), height=250))
 
     # Save as GIF
-    output_path = "demo_workflow.gif"
+    output_path = "demo_workflow.gi"
     frames[0].save(
         output_path,
         save_all=True,

@@ -368,6 +368,6 @@ if __name__ == '__main__':
             print(f"   ✅ ROUTED to {result['to']}")
 
     # Stats
-    print(f"\n📊 Router stats:")
+    print("\n📊 Router stats:")
     for key, value in router.get_stats().items():
         print(f"   {key}: {value}")

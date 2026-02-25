@@ -50,7 +50,7 @@ class ClipboardDesktopClient:
         self.message_history: List[Dict] = []
 
         logger.info(f"🖥️  Desktop client initialized: {client_id}")
-        logger.info(f"📋 Clipboard monitoring active")
+        logger.info("📋 Clipboard monitoring active")
         logger.info(f"🌉 Connected to bridge: {message_bus_url}")
 
     def get_clipboard(self) -> str:
@@ -188,7 +188,7 @@ class ClipboardDesktopClient:
 
     def send_manual(self, text: str):
         """Manually send a message to bridge"""
-        logger.info(f"📤 Sending manual message...")
+        logger.info("📤 Sending manual message...")
         success = self.send_to_bridge(text)
 
         if success:
@@ -214,7 +214,7 @@ class DesktopCollaborationClient:
         self.room_id = room_id
         self.clipboard_client = ClipboardDesktopClient(client_id, message_bus_url)
 
-        logger.info(f"🏢 Desktop collaboration client initialized")
+        logger.info("🏢 Desktop collaboration client initialized")
         if room_id:
             logger.info(f"   Room: {room_id}")
 

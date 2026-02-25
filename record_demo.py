@@ -51,7 +51,7 @@ def record_demo():
 
     # Show the prompt
     prompt = "What is 2+2? Reply with ONLY the number."
-    print(f"📤 Sending to Browser Claude:")
+    print("📤 Sending to Browser Claude:")
     print(f'   "{prompt}"')
     print()
     time.sleep(1)

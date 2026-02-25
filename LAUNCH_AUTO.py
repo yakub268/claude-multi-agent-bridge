@@ -29,7 +29,7 @@ class LaunchAutomation:
 
     def send_and_wait(self, prompt: str, wait_time: int = 10) -> str:
         """Send prompt to Browser Claude and wait for response"""
-        print(f"\n📤 Sending to Browser Claude:")
+        print("\n📤 Sending to Browser Claude:")
         print(f"   {prompt[:100]}...")
 
         self.client.send('browser', 'command', {
@@ -76,7 +76,7 @@ class LaunchAutomation:
             "Open sourced for the community:\n\n→ github.com/yakub268/claude-multi-agent-bridge\n→ MIT License\n→ Working examples included\n→ Full documentation\n\nStar if this inspires you ⭐\n\nLet's build multi-agent systems together 🤖↔️🤖"
         ]
 
-        prompt = f"""I need to post a Twitter thread. Here are the 7 tweets:
+        prompt = """I need to post a Twitter thread. Here are the 7 tweets:
 
 {chr(10).join([f'Tweet {i+1}: {tweet}' for i, tweet in enumerate(tweets)])}
 
@@ -154,7 +154,7 @@ c.send('browser', 'command', {
 
 Feedback welcome!"""
 
-        prompt = f"""Please help me post this to Reddit's r/ClaudeAI:
+        prompt = """Please help me post this to Reddit's r/ClaudeAI:
 
 Title: {title}
 
@@ -219,7 +219,7 @@ Took 15+ extension reloads to get Chrome to stop caching 😅 But it works!
 
 Feedback/questions welcome! 🚀"""
 
-        prompt = f"""Please help me post to the Anthropic Discord #show-and-tell channel:
+        prompt = """Please help me post to the Anthropic Discord #show-and-tell channel:
 
 Message:
 {message}

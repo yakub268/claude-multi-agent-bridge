@@ -309,7 +309,7 @@ if __name__ == '__main__':
     print(f"Health endpoint:  http://{args.host}:{args.port}/health")
     print()
     print("Configure Prometheus to scrape:")
-    print(f"""
+    print("""
 scrape_configs:
   - job_name: 'claude-bridge'
     static_configs:

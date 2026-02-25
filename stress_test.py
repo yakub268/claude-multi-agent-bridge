@@ -139,7 +139,7 @@ class StressTest:
     def test_large_payload(self):
         """Test with large payloads"""
         print(f"\n{'='*70}")
-        print(f"TEST 4: Large Payload")
+        print("TEST 4: Large Payload")
         print('='*70)
 
         # Generate large prompt
@@ -177,13 +177,13 @@ class StressTest:
         else:
             with self.lock:
                 self.results['timeouts'] += 1
-            print(f"  ❌ Large payload: Timeout")
+            print("  ❌ Large payload: Timeout")
             return False
 
     def test_edge_cases(self):
         """Test edge cases and error handling"""
         print(f"\n{'='*70}")
-        print(f"TEST 5: Edge Cases")
+        print("TEST 5: Edge Cases")
         print('='*70)
 
         passed = 0
@@ -229,7 +229,7 @@ class StressTest:
     def test_message_filtering(self):
         """Test message filtering and deduplication"""
         print(f"\n{'='*70}")
-        print(f"TEST 6: Message Filtering")
+        print("TEST 6: Message Filtering")
         print('='*70)
 
         # Send messages to different recipients
@@ -268,7 +268,7 @@ class StressTest:
         print(f"Errors: {self.results['errors']}")
 
         if self.results['latencies']:
-            print(f"\nLatency Statistics:")
+            print("\nLatency Statistics:")
             print(f"  Min: {min(self.results['latencies']):.2f}s")
             print(f"  Max: {max(self.results['latencies']):.2f}s")
             print(f"  Avg: {statistics.mean(self.results['latencies']):.2f}s")

@@ -316,7 +316,7 @@ class MetricsCollector:
             stats = histogram.get_stats()
 
             for bucket, count in stats['buckets'].items():
-                bucket_label = "+Inf" if bucket == float('inf') else str(bucket)
+                bucket_label = "+In" if bucket == float('inf') else str(bucket)
                 lines.append(f"{name}_bucket{{le=\"{bucket_label}\"}} {count}")
 
             lines.append(f"{name}_sum {stats['sum']}")

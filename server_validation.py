@@ -145,7 +145,7 @@ class ServerValidator:
     def test_channel_isolation(self):
         """Test that messages are properly routed to correct recipients"""
         print(f"\n{'='*70}")
-        print(f"TEST 4: Channel Isolation")
+        print("TEST 4: Channel Isolation")
         print('='*70)
 
         # Send to browser
@@ -186,7 +186,7 @@ class ServerValidator:
     def test_status_endpoint(self):
         """Test /api/status endpoint"""
         print(f"\n{'='*70}")
-        print(f"TEST 5: Status Endpoint")
+        print("TEST 5: Status Endpoint")
         print('='*70)
 
         try:
@@ -215,7 +215,7 @@ class ServerValidator:
         print(f"Errors: {self.results['errors']}")
 
         if self.results['latencies']:
-            print(f"\nLatency Stats:")
+            print("\nLatency Stats:")
             print(f"  Min: {min(self.results['latencies'])*1000:.1f}ms")
             print(f"  Max: {max(self.results['latencies'])*1000:.1f}ms")
             print(f"  Avg: {statistics.mean(self.results['latencies'])*1000:.1f}ms")

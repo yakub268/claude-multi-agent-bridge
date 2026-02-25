@@ -120,7 +120,7 @@ async def test_natural_disagreement():
 
         print(f"\n   🚫 Blocking: {blocking_count}/4 agents (50%)")
         print(f"   ⚠️  Major: {major_count}/4 agents (50%)")
-        print(f"   ✅ Support: 0/4 agents (0%)")
+        print("   ✅ Support: 0/4 agents (0%)")
 
         print("\n🎯 RESULT: UNANIMOUS DISAGREEMENT")
         print("   All 4 Claude agents independently rejected the proposal!")
@@ -215,9 +215,9 @@ async def test_groupthink_vs_diversity():
         print("\n📊 OPINION DISTRIBUTION:\n")
         print(f"   👍 PRO (invest now): {debate.get('total_pro', 0)} agent")
         print(f"   👎 CON (don't invest): {debate.get('total_con', 0)} agents")
-        print(f"\n   💡 Optimist: INVEST (upside potential)")
-        print(f"   ⚠️  Pessimist: PASS (too risky)")
-        print(f"   🎯 Pragmatist: WAIT (better entry point)")
+        print("\n   💡 Optimist: INVEST (upside potential)")
+        print("   ⚠️  Pessimist: PASS (too risky)")
+        print("   🎯 Pragmatist: WAIT (better entry point)")
 
         print("\n🎯 RESULT: DIVERSE OPINIONS")
         print("   Same facts → 3 different conclusions!")

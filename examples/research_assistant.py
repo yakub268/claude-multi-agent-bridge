@@ -32,7 +32,7 @@ def main():
             'text': task
         })
 
-        print(f"   ⏳ Waiting for response...")
+        print("   ⏳ Waiting for response...")
 
         # Wait for response
         start = time.time()
@@ -51,7 +51,7 @@ def main():
                 continue
             break
         else:
-            print(f"   ⏰ Timeout - no response\n")
+            print("   ⏰ Timeout - no response\n")
 
         # Small delay between tasks
         time.sleep(2)

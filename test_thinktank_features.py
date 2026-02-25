@@ -65,7 +65,7 @@ class TestCritiqueSystem:
         severities = ["blocking", "major", "minor", "suggestion"]
         for i, severity in enumerate(severities):
             critique = room.send_critique(
-                f"reviewer",
+                "reviewer",
                 msg.id,
                 f"Test critique {i}",
                 severity=severity

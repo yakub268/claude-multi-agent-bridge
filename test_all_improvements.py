@@ -151,7 +151,7 @@ def test_channels_and_files():
 
     # Summary
     summary = room.get_summary()
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   Channels: {summary['channels']}")
     print(f"   Files shared: {summary['files_shared']}")
     print(f"   Total messages: {summary['total_messages']}")
@@ -196,7 +196,7 @@ def test_code_execution():
         result3 = room.execute_code("claude-desktop-1", js_code, CodeLanguage.JAVASCRIPT)
         print(f"   Output: {result3.output}")
     except Exception as e:
-        print(f"   Skipped (Node.js not available)")
+        print("   Skipped (Node.js not available)")
 
     summary = room.get_summary()
     print(f"\n📊 Total code executions: {summary['code_executions']}")
@@ -249,7 +249,7 @@ def test_kanban_integration():
     board.add_dependency(task2, task1)
     board.add_dependency(task3, task2)
 
-    print(f"   Created 3 tasks with dependencies")
+    print("   Created 3 tasks with dependencies")
 
     # Workflow
     print("\n🔄 Moving through workflow...")

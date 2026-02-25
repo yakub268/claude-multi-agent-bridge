@@ -43,8 +43,8 @@ PERSIST_ENABLED = True
 ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', secrets.token_urlsafe(32))
 if not os.getenv('ADMIN_TOKEN'):
     logger.warning(
-        f"No ADMIN_TOKEN environment variable set. Using auto-generated token.\n"
-        f"Set ADMIN_TOKEN environment variable in production.\n"
+        "No ADMIN_TOKEN environment variable set. Using auto-generated token.\n"
+        "Set ADMIN_TOKEN environment variable in production.\n"
         f"Current token (save this): {ADMIN_TOKEN}"
     )
 
@@ -396,9 +396,9 @@ if __name__ == '__main__':
     logger.info("="*70)
     logger.info("🚀 Multi-Claude Message Bus v2 starting")
     logger.info("="*70)
-    logger.info(f"📡 Server: http://localhost:5001")
+    logger.info("📡 Server: http://localhost:5001")
     logger.info(f"📊 Persistence: {'Enabled' if PERSIST_ENABLED else 'Disabled'}")
-    logger.info(f"📝 Log file: message_bus.log")
+    logger.info("📝 Log file: message_bus.log")
     logger.info("")
     logger.info("Endpoints:")
     logger.info("   POST /api/send        - Send message")

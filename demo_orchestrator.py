@@ -139,7 +139,7 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         # Check decision
         decision = [d for d in room.decisions if d.id == dec_id][0]
         if decision.approved:
-            print(f"      🎉 Decision APPROVED!")
+            print("      🎉 Decision APPROVED!")
         print()
 
         time.sleep(0.5)

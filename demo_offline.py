@@ -98,7 +98,7 @@ def main():
         vote_type=VoteType.SIMPLE_MAJORITY
     )
     print(f"   ✅ Decision proposed: {dec1_id}")
-    print(f"   Vote type: simple_majority")
+    print("   Vote type: simple_majority")
 
     room.vote(dec1_id, "claude-desktop-1", approve=True)
     room.vote(dec1_id, "claude-desktop-2", approve=True)
@@ -106,7 +106,7 @@ def main():
     room.vote(dec1_id, "claude-mobile", approve=False)
 
     dec1 = [d for d in room.decisions if d.id == dec1_id][0]
-    print(f"   ✅ Votes: 3 yes, 1 no")
+    print("   ✅ Votes: 3 yes, 1 no")
     print(f"   Result: {'✅ APPROVED' if dec1.approved else '❌ REJECTED'}")
 
     print_step(6, "Consensus Vote: Delete production database")
@@ -116,14 +116,14 @@ def main():
         vote_type=VoteType.CONSENSUS
     )
     print(f"   ✅ Decision proposed: {dec2_id}")
-    print(f"   Vote type: consensus (requires 100%)")
+    print("   Vote type: consensus (requires 100%)")
 
     room.vote(dec2_id, "claude-desktop-1", approve=True)
     room.vote(dec2_id, "claude-desktop-2", approve=True)
     room.vote(dec2_id, "claude-browser", approve=False)
 
     dec2 = [d for d in room.decisions if d.id == dec2_id][0]
-    print(f"   ✅ Votes: 2 yes, 1 no")
+    print("   ✅ Votes: 2 yes, 1 no")
     print(f"   Result: {'✅ APPROVED' if dec2.approved else '❌ REJECTED (consensus requires 100%)'}")
 
     print_step(7, "Veto Power: Deploy to production now")
@@ -138,8 +138,8 @@ def main():
     room.vote(dec3_id, "claude-desktop-2", veto=True)
 
     dec3 = [d for d in room.decisions if d.id == dec3_id][0]
-    print(f"   ✅ 2 approvals")
-    print(f"   🚫 VETOED by claude-desktop-2")
+    print("   ✅ 2 approvals")
+    print("   🚫 VETOED by claude-desktop-2")
     print(f"   Result: {'✅ APPROVED' if dec3.approved else '❌ BLOCKED BY VETO'}")
 
     # ========================================================================
@@ -159,8 +159,8 @@ def main():
     )
     print(f"   ✅ File uploaded: strategy.py ({file_id})")
     print(f"   Size: {len(test_code)} bytes")
-    print(f"   Channel: code")
-    print(f"   Available to all room members")
+    print("   Channel: code")
+    print("   Available to all room members")
 
     # ========================================================================
     # PHASE 5: Code Execution
@@ -181,10 +181,10 @@ print(f"Range: ${min(prices)}-${max(prices)}")
         CodeLanguage.PYTHON,
         channel=code_ch
     )
-    print(f"   ✅ Code executed successfully")
+    print("   ✅ Code executed successfully")
     print(f"   Exit code: {result.exit_code}")
     print(f"   Execution time: {result.execution_time_ms:.1f}ms")
-    print(f"   Output:")
+    print("   Output:")
     for line in result.output.strip().split('\n'):
         print(f"      {line}")
 
@@ -207,7 +207,7 @@ print(f"Range: ${min(prices)}-${max(prices)}")
     print(threading.visualize_thread(thread.thread_id, max_text_length=35))
 
     stats = threading.get_thread_stats(thread.thread_id)
-    print(f"\n   📊 Thread Stats:")
+    print("\n   📊 Thread Stats:")
     print(f"      Messages: {stats['message_count']}")
     print(f"      Max depth: {stats['max_depth']}")
     print(f"      Participants: {stats['participants']}")
@@ -237,7 +237,7 @@ print(f"Range: ${min(prices)}-${max(prices)}")
     print_step(12, "Room statistics...")
     room_summary = room.get_summary()
 
-    print(f"   📊 Room Activity:")
+    print("   📊 Room Activity:")
     print(f"      • Members: {room_summary['total_members']}")
     print(f"      • Messages: {room_summary['total_messages']}")
     print(f"      • Channels: {room_summary['channels']}")

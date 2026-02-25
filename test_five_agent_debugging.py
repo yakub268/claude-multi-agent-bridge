@@ -262,7 +262,7 @@ class TestDebugWithAlternatives:
             "database-expert",
             alt2,
             "pro",
-            "Pendulum handles DST automatically - future-proof"
+            "Pendulum handles DST automatically - future-proo"
         )
 
         # Alt2: CON

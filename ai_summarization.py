@@ -50,7 +50,7 @@ class AISummarizer:
         """
         Args:
             auto_summarize_threshold: Message count before auto-summary
-            summary_length: "brief" (3-5 sentences), "concise" (1-2 paragraphs), "detailed" (3+ paragraphs)
+            summary_length: "brie" (3-5 sentences), "concise" (1-2 paragraphs), "detailed" (3+ paragraphs)
         """
         self.auto_summarize_threshold = auto_summarize_threshold
         self.summary_length = summary_length
@@ -171,14 +171,14 @@ class AISummarizer:
 
         # Determine length instruction
         length_instructions = {
-            "brief": "Summarize in 3-5 sentences.",
+            "brie": "Summarize in 3-5 sentences.",
             "concise": "Summarize in 1-2 paragraphs.",
             "detailed": "Provide a detailed summary in 3+ paragraphs."
         }
         length_instruction = length_instructions.get(self.summary_length, length_instructions['concise'])
 
         # Create prompt
-        prompt = f"""Analyze this collaboration room discussion and provide:
+        prompt = """Analyze this collaboration room discussion and provide:
 
 1. **Summary**: {length_instruction}
 2. **Key Decisions**: List any decisions made (voting results, consensus reached)
@@ -348,14 +348,14 @@ Format your response as JSON:
         if format == "markdown":
             lines = [
                 f"# 📝 Channel Summary: {summary.channel}",
-                f"",
+                "",
                 f"**Messages**: {summary.message_count}",
                 f"**Time Range**: {summary.time_range}",
                 f"**Generated**: {summary.generated_at}",
-                f"",
-                f"## Summary",
+                "",
+                "## Summary",
                 summary.summary,
-                f""
+                ""
             ]
 
             if summary.key_decisions:
@@ -383,10 +383,10 @@ Format your response as JSON:
             lines = [
                 f"📝 CHANNEL SUMMARY: {summary.channel}",
                 f"Messages: {summary.message_count} | Time: {summary.time_range}",
-                f"",
-                f"Summary:",
+                "",
+                "Summary:",
                 summary.summary,
-                f""
+                ""
             ]
 
             if summary.key_decisions:
@@ -460,7 +460,7 @@ if __name__ == '__main__':
     print("\n✅ Summary exported to test_summary.json")
 
     # Test auto-summarize check
-    print(f"\n📊 Message count tracking:")
+    print("\n📊 Message count tracking:")
     print(f"   main: {summarizer.message_counts['main']} messages")
     print(f"   Should summarize again with 5 more messages: {summarizer.should_summarize('main', len(messages) + 5)}")
 

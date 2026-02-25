@@ -63,11 +63,11 @@ class CodeClientWS:
                 time.sleep(0.1)
 
             if not self.connected:
-                print(f"⚠️  WebSocket connection timeout. Falling back to polling mode.")
+                print("⚠️  WebSocket connection timeout. Falling back to polling mode.")
 
         except Exception as e:
             print(f"❌ WebSocket connection failed: {e}")
-            print(f"💡 Make sure server_ws.py is running")
+            print("💡 Make sure server_ws.py is running")
 
     def _on_open(self, ws):
         """WebSocket connection opened"""
@@ -81,7 +81,7 @@ class CodeClientWS:
             msg_type = data.get('type')
 
             if msg_type == 'connection_confirmed':
-                print(f"🔌 Connection confirmed by server")
+                print("🔌 Connection confirmed by server")
 
             elif msg_type == 'message':
                 # Actual message from another client
@@ -121,7 +121,7 @@ class CodeClientWS:
     def _on_close(self, ws, close_status_code, close_msg):
         """WebSocket connection closed"""
         self.connected = False
-        print(f"🔌 WebSocket disconnected")
+        print("🔌 WebSocket disconnected")
 
         # Auto-reconnect
         print(f"🔄 Reconnecting in {self.reconnect_interval} seconds...")
@@ -142,7 +142,7 @@ class CodeClientWS:
             True if sent successfully
         """
         if not self.connected:
-            print(f"⚠️  Not connected, message not sent")
+            print("⚠️  Not connected, message not sent")
             return False
 
         try:

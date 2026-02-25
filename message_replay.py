@@ -346,7 +346,7 @@ class MessageReplay:
 """
 
         for msg in messages:
-            html += f"""
+            html += """
         <div class="message">
             <div class="header">
                 <span class="route">{msg.from_client} → {msg.to_client}</span>

@@ -381,6 +381,6 @@ if __name__ == '__main__':
     print(f"   Sent {result['sent']} unique messages")
 
     # Final stats
-    print(f"\n📊 Total Stats:")
+    print("\n📊 Total Stats:")
     for key, value in batch.get_stats().items():
         print(f"   {key}: {value}")

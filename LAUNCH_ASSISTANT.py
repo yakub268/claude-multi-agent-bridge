@@ -25,7 +25,7 @@ class LaunchAssistant:
 
     def ask_browser_claude(self, prompt: str, wait_time: int = 15) -> str:
         """Ask Browser Claude for help"""
-        print(f"\n📤 Asking Browser Claude...")
+        print("\n📤 Asking Browser Claude...")
         print(f"   {prompt[:80]}...")
 
         self.client.send('browser', 'command', {
@@ -33,7 +33,7 @@ class LaunchAssistant:
             'text': prompt
         })
 
-        print(f"⏳ Waiting for response...")
+        print("⏳ Waiting for response...")
 
         start = time.time()
         while (time.time() - start) < wait_time:
@@ -42,7 +42,7 @@ class LaunchAssistant:
             for msg in messages:
                 if msg.get('type') == 'claude_response':
                     response = msg['payload']['response']
-                    print(f"✅ Got response!\n")
+                    print("✅ Got response!\n")
                     return response
 
             time.sleep(1)
@@ -84,7 +84,7 @@ response = c.poll()
 
 Tweet 4-7: [technical details, use cases, challenges solved, CTA]"""
 
-        prompt = f"""I'm about to launch my multi-agent AI project on Twitter. Here's my draft thread:
+        prompt = """I'm about to launch my multi-agent AI project on Twitter. Here's my draft thread:
 
 {original_thread}
 
