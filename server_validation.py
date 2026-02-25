@@ -9,14 +9,15 @@ import requests
 import statistics
 from datetime import datetime, timezone
 
+
 class ServerValidator:
     def __init__(self, base_url="http://localhost:5001"):
         self.base_url = base_url
         self.results = {
-            'total_sent': 0,
-            'total_received': 0,
-            'errors': 0,
-            'latencies': [],
+            "total_sent": 0,
+            "total_received": 0,
+            "errors": 0,
+            "latencies": [],
         }
         self.lock = threading.Lock()
 
@@ -26,42 +27,49 @@ class ServerValidator:
             start = time.time()
 
             # Send message
-            response = requests.post(f"{self.base_url}/api/send", json={
-                'from': from_client,
-                'to': to_client,
-                'type': 'test',
-                'payload': {'id': test_id, 'timestamp': datetime.now(timezone.utc).isoformat()}
-            }, timeout=5)
+            response = requests.post(
+                f"{self.base_url}/api/send",
+                json={
+                    "from": from_client,
+                    "to": to_client,
+                    "type": "test",
+                    "payload": {
+                        "id": test_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                timeout=5,
+            )
 
             if response.status_code == 200:
                 with self.lock:
-                    self.results['total_sent'] += 1
+                    self.results["total_sent"] += 1
 
                 # Try to retrieve the message
-                response = requests.get(f"{self.base_url}/api/messages", params={
-                    'to': to_client
-                }, timeout=5)
+                response = requests.get(
+                    f"{self.base_url}/api/messages", params={"to": to_client}, timeout=5
+                )
 
                 if response.status_code == 200:
                     data = response.json()
-                    messages = data.get('messages', [])
-                    found = any(msg['payload'].get('id') == test_id for msg in messages)
+                    messages = data.get("messages", [])
+                    found = any(msg["payload"].get("id") == test_id for msg in messages)
 
                     latency = time.time() - start
 
                     if found:
                         with self.lock:
-                            self.results['total_received'] += 1
-                            self.results['latencies'].append(latency)
+                            self.results["total_received"] += 1
+                            self.results["latencies"].append(latency)
                         return True
 
             with self.lock:
-                self.results['errors'] += 1
+                self.results["errors"] += 1
             return False
 
         except Exception as e:
             with self.lock:
-                self.results['errors'] += 1
+                self.results["errors"] += 1
             print(f"  ❌ Error: {e}")
             return False
 
@@ -69,11 +77,11 @@ class ServerValidator:
         """Test sequential message sending"""
         print(f"\n{'='*70}")
         print(f"TEST 1: Sequential Send/Receive ({count} messages)")
-        print('='*70)
+        print("=" * 70)
 
         success = 0
         for i in range(count):
-            if self.test_send_receive('code', 'browser', f'SEQ-{i}'):
+            if self.test_send_receive("code", "browser", f"SEQ-{i}"):
                 success += 1
             time.sleep(0.1)
 
@@ -87,18 +95,18 @@ class ServerValidator:
         """Test rapid message sending without delays"""
         print(f"\n{'='*70}")
         print(f"TEST 2: Rapid Fire ({count} messages, no delay)")
-        print('='*70)
+        print("=" * 70)
 
-        start_sent = self.results['total_sent']
-        start_received = self.results['total_received']
+        start_sent = self.results["total_sent"]
+        start_received = self.results["total_received"]
 
         success = 0
         for i in range(count):
-            if self.test_send_receive('code', 'browser', f'RAPID-{i}'):
+            if self.test_send_receive("code", "browser", f"RAPID-{i}"):
                 success += 1
 
-        sent = self.results['total_sent'] - start_sent
-        received = self.results['total_received'] - start_received
+        sent = self.results["total_sent"] - start_sent
+        received = self.results["total_received"] - start_received
 
         print(f"✅ Sent: {sent}/{count}")
         print(f"✅ Received: {received}/{count}")
@@ -110,16 +118,16 @@ class ServerValidator:
         """Test concurrent message sending from multiple threads"""
         print(f"\n{'='*70}")
         print(f"TEST 3: Concurrent Threads ({thread_count} threads, 10 messages each)")
-        print('='*70)
+        print("=" * 70)
 
-        start_sent = self.results['total_sent']
-        start_received = self.results['total_received']
+        start_sent = self.results["total_sent"]
+        start_received = self.results["total_received"]
 
         threads = []
 
         def worker(thread_id):
             for i in range(10):
-                self.test_send_receive('code', 'browser', f'THREAD-{thread_id}-{i}')
+                self.test_send_receive("code", "browser", f"THREAD-{thread_id}-{i}")
                 time.sleep(0.05)
 
         # Launch threads
@@ -132,8 +140,8 @@ class ServerValidator:
         for t in threads:
             t.join()
 
-        sent = self.results['total_sent'] - start_sent
-        received = self.results['total_received'] - start_received
+        sent = self.results["total_sent"] - start_sent
+        received = self.results["total_received"] - start_received
         expected = thread_count * 10
 
         print(f"✅ Sent: {sent}/{expected}")
@@ -146,35 +154,49 @@ class ServerValidator:
         """Test that messages are properly routed to correct recipients"""
         print(f"\n{'='*70}")
         print("TEST 4: Channel Isolation")
-        print('='*70)
+        print("=" * 70)
 
         # Send to browser
-        requests.post(f"{self.base_url}/api/send", json={
-            'from': 'code',
-            'to': 'browser',
-            'type': 'test',
-            'payload': {'target': 'browser'}
-        })
+        requests.post(
+            f"{self.base_url}/api/send",
+            json={
+                "from": "code",
+                "to": "browser",
+                "type": "test",
+                "payload": {"target": "browser"},
+            },
+        )
 
         # Send to desktop
-        requests.post(f"{self.base_url}/api/send", json={
-            'from': 'code',
-            'to': 'desktop',
-            'type': 'test',
-            'payload': {'target': 'desktop'}
-        })
+        requests.post(
+            f"{self.base_url}/api/send",
+            json={
+                "from": "code",
+                "to": "desktop",
+                "type": "test",
+                "payload": {"target": "desktop"},
+            },
+        )
 
         time.sleep(0.5)
 
         # Check browser messages
-        browser_data = requests.get(f"{self.base_url}/api/messages", params={'to': 'browser'}).json()
-        browser_msgs = browser_data.get('messages', [])
-        browser_has_desktop_msg = any(msg['payload'].get('target') == 'desktop' for msg in browser_msgs)
+        browser_data = requests.get(
+            f"{self.base_url}/api/messages", params={"to": "browser"}
+        ).json()
+        browser_msgs = browser_data.get("messages", [])
+        browser_has_desktop_msg = any(
+            msg["payload"].get("target") == "desktop" for msg in browser_msgs
+        )
 
         # Check desktop messages
-        desktop_data = requests.get(f"{self.base_url}/api/messages", params={'to': 'desktop'}).json()
-        desktop_msgs = desktop_data.get('messages', [])
-        desktop_has_browser_msg = any(msg['payload'].get('target') == 'browser' for msg in desktop_msgs)
+        desktop_data = requests.get(
+            f"{self.base_url}/api/messages", params={"to": "desktop"}
+        ).json()
+        desktop_msgs = desktop_data.get("messages", [])
+        desktop_has_browser_msg = any(
+            msg["payload"].get("target") == "browser" for msg in desktop_msgs
+        )
 
         if not browser_has_desktop_msg and not desktop_has_browser_msg:
             print("✅ Channel isolation working correctly")
@@ -187,7 +209,7 @@ class ServerValidator:
         """Test /api/status endpoint"""
         print(f"\n{'='*70}")
         print("TEST 5: Status Endpoint")
-        print('='*70)
+        print("=" * 70)
 
         try:
             response = requests.get(f"{self.base_url}/api/status", timeout=5)
@@ -196,7 +218,9 @@ class ServerValidator:
                 print(f"✅ Status: {status['status']}")
                 print(f"✅ Uptime: {status['uptime_seconds']:.0f}s")
                 print(f"✅ Total Messages: {status['metrics']['total_messages']}")
-                print(f"✅ Messages/min: {status['metrics']['messages_per_minute']:.2f}")
+                print(
+                    f"✅ Messages/min: {status['metrics']['messages_per_minute']:.2f}"
+                )
                 print(f"✅ Errors: {status['metrics']['errors']}")
                 return True
             return False
@@ -208,25 +232,31 @@ class ServerValidator:
         """Print test summary"""
         print(f"\n{'='*70}")
         print("📊 VALIDATION SUMMARY")
-        print('='*70)
+        print("=" * 70)
 
         print(f"Total Sent: {self.results['total_sent']}")
         print(f"Total Received: {self.results['total_received']}")
         print(f"Errors: {self.results['errors']}")
 
-        if self.results['latencies']:
+        if self.results["latencies"]:
             print("\nLatency Stats:")
             print(f"  Min: {min(self.results['latencies'])*1000:.1f}ms")
             print(f"  Max: {max(self.results['latencies'])*1000:.1f}ms")
             print(f"  Avg: {statistics.mean(self.results['latencies'])*1000:.1f}ms")
             print(f"  p50: {statistics.median(self.results['latencies'])*1000:.1f}ms")
-            if len(self.results['latencies']) > 1:
-                print(f"  p95: {statistics.quantiles(self.results['latencies'], n=20)[18]*1000:.1f}ms")
+            if len(self.results["latencies"]) > 1:
+                print(
+                    f"  p95: {statistics.quantiles(self.results['latencies'], n=20)[18]*1000:.1f}ms"
+                )
 
-        success_rate = (self.results['total_received'] / self.results['total_sent'] * 100) if self.results['total_sent'] > 0 else 0
+        success_rate = (
+            (self.results["total_received"] / self.results["total_sent"] * 100)
+            if self.results["total_sent"] > 0
+            else 0
+        )
         print(f"\nSuccess Rate: {success_rate:.1f}%")
 
-        if success_rate >= 95 and self.results['errors'] < 10:
+        if success_rate >= 95 and self.results["errors"] < 10:
             print("\n✅ SERVER VALIDATION PASSED")
             return True
         else:
@@ -235,9 +265,9 @@ class ServerValidator:
 
 
 def main():
-    print("="*70)
+    print("=" * 70)
     print("🧪 MULTI-CLAUDE BRIDGE - SERVER VALIDATION")
-    print("="*70)
+    print("=" * 70)
     print("\nThis validates server functionality without requiring browser clients.")
     print("For full end-to-end testing, use stress_test.py with browser extension.")
     print()
@@ -266,7 +296,7 @@ def main():
 
     print(f"\n{'='*70}")
     print("TEST RESULTS:")
-    print('='*70)
+    print("=" * 70)
     for name, passed in results:
         status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{name:20s} {status}")
@@ -277,8 +307,8 @@ def main():
         print("✅ ALL TESTS PASSED - Server ready for production")
     else:
         print("❌ SOME TESTS FAILED - Review errors above")
-    print('='*70)
+    print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

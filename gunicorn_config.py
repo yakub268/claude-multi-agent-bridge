@@ -2,10 +2,12 @@
 Gunicorn configuration for production deployment
 Usage: gunicorn -c gunicorn_config.py wsgi:application
 """
+
 import multiprocessing
 
 # Server socket
 import os
+
 bind = f"0.0.0.0:{os.getenv('PORT', '5001')}"
 backlog = 2048
 

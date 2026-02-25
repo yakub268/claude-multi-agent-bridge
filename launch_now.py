@@ -14,6 +14,7 @@ from code_client import CodeClient
 import time
 import sys
 
+
 class AutoLauncher:
     def __init__(self):
         self.client = CodeClient()
@@ -23,14 +24,11 @@ class AutoLauncher:
         """Send prompt and collect response"""
         print(f"\n{'='*70}")
         print(f"📤 {label}")
-        print('='*70)
+        print("=" * 70)
         print("Sending to Browser Claude...")
 
         # Send the prompt
-        self.client.send('browser', 'command', {
-            'action': 'run_prompt',
-            'text': prompt
-        })
+        self.client.send("browser", "command", {"action": "run_prompt", "text": prompt})
 
         # Wait for response
         print(f"⏳ Waiting {self.wait_time} seconds...")
@@ -40,14 +38,14 @@ class AutoLauncher:
         messages = self.client.poll()
 
         for msg in messages:
-            if msg.get('type') == 'claude_response':
-                response = msg['payload']['response']
+            if msg.get("type") == "claude_response":
+                response = msg["payload"]["response"]
                 print(f"\n✅ Response received ({len(response)} chars)\n")
-                print('='*70)
-                print('RESULT:')
-                print('='*70)
+                print("=" * 70)
+                print("RESULT:")
+                print("=" * 70)
                 print(response)
-                print('='*70)
+                print("=" * 70)
                 return response
 
         print("❌ No response received")
@@ -163,16 +161,17 @@ The project is genuinely useful and working. I want maximum reach."""
 
         return self.send_and_collect(prompt, "VIRAL GROWTH TACTICS")
 
+
 def main():
-    print("="*70)
+    print("=" * 70)
     print("🚀 AUTOMATED LAUNCH - USING OUR OWN TOOL!")
-    print("="*70)
+    print("=" * 70)
     print("\nThis script uses Browser Claude to optimize launch materials.")
     print("Make sure you have a FRESH claude.ai tab open!\n")
 
     # Give user 5 seconds to prepare
     for i in range(5, 0, -1):
-        print(f"Starting in {i}...", end='\r')
+        print(f"Starting in {i}...", end="\r")
         time.sleep(1)
     print("Starting NOW!     \n")
 
@@ -182,24 +181,24 @@ def main():
     results = {}
 
     print("\n🐦 PHASE 1: Twitter Optimization")
-    results['twitter'] = launcher.optimize_twitter()
+    results["twitter"] = launcher.optimize_twitter()
     time.sleep(3)
 
     print("\n\n📱 PHASE 2: Reddit Optimization")
-    results['reddit'] = launcher.optimize_reddit()
+    results["reddit"] = launcher.optimize_reddit()
     time.sleep(3)
 
     print("\n\n🟠 PHASE 3: Hacker News Strategy")
-    results['hn'] = launcher.get_hn_strategy()
+    results["hn"] = launcher.get_hn_strategy()
     time.sleep(3)
 
     print("\n\n🔥 PHASE 4: Viral Growth Tactics")
-    results['viral'] = launcher.get_viral_tactics()
+    results["viral"] = launcher.get_viral_tactics()
 
     # Summary
-    print("\n\n" + "="*70)
+    print("\n\n" + "=" * 70)
     print("🎉 LAUNCH OPTIMIZATION COMPLETE!")
-    print("="*70)
+    print("=" * 70)
 
     successful = sum(1 for v in results.values() if v is not None)
     print(f"\n✅ Successfully optimized: {successful}/4 steps")
@@ -221,9 +220,10 @@ def main():
         print("   3. Message bus is running")
         print("\n💡 You can still use the templates in LAUNCH.md")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Repository: https://github.com/yakub268/claude-multi-agent-bridge")
-    print("="*70)
+    print("=" * 70)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

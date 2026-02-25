@@ -25,13 +25,16 @@ from dataclasses import dataclass, field
 import requests
 import websocket
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class LoadTestResults:
     """Results from load test"""
+
     total_clients: int
     duration_seconds: float
     messages_sent: int = 0
@@ -43,36 +46,50 @@ class LoadTestResults:
 
     def get_summary(self) -> Dict:
         """Get test summary"""
-        throughput = self.messages_sent / self.duration_seconds if self.duration_seconds > 0 else 0
+        throughput = (
+            self.messages_sent / self.duration_seconds
+            if self.duration_seconds > 0
+            else 0
+        )
 
         latency_stats = {}
         if self.latencies_ms:
             latency_stats = {
-                'min_ms': round(min(self.latencies_ms), 2),
-                'max_ms': round(max(self.latencies_ms), 2),
-                'mean_ms': round(statistics.mean(self.latencies_ms), 2),
-                'p50_ms': round(statistics.median(self.latencies_ms), 2),
-                'p95_ms': round(statistics.quantiles(self.latencies_ms, n=20)[18], 2) if len(self.latencies_ms) > 20 else None,
-                'p99_ms': round(statistics.quantiles(self.latencies_ms, n=100)[98], 2) if len(self.latencies_ms) > 100 else None,
+                "min_ms": round(min(self.latencies_ms), 2),
+                "max_ms": round(max(self.latencies_ms), 2),
+                "mean_ms": round(statistics.mean(self.latencies_ms), 2),
+                "p50_ms": round(statistics.median(self.latencies_ms), 2),
+                "p95_ms": (
+                    round(statistics.quantiles(self.latencies_ms, n=20)[18], 2)
+                    if len(self.latencies_ms) > 20
+                    else None
+                ),
+                "p99_ms": (
+                    round(statistics.quantiles(self.latencies_ms, n=100)[98], 2)
+                    if len(self.latencies_ms) > 100
+                    else None
+                ),
             }
 
         return {
-            'test_config': {
-                'total_clients': self.total_clients,
-                'duration_seconds': self.duration_seconds
+            "test_config": {
+                "total_clients": self.total_clients,
+                "duration_seconds": self.duration_seconds,
             },
-            'throughput': {
-                'messages_sent': self.messages_sent,
-                'messages_received': self.messages_received,
-                'messages_per_second': round(throughput, 2)
+            "throughput": {
+                "messages_sent": self.messages_sent,
+                "messages_received": self.messages_received,
+                "messages_per_second": round(throughput, 2),
             },
-            'errors': {
-                'total': self.errors,
-                'connection_errors': self.connection_errors,
-                'by_type': dict(self.errors_by_type)
+            "errors": {
+                "total": self.errors,
+                "connection_errors": self.connection_errors,
+                "by_type": dict(self.errors_by_type),
             },
-            'latency': latency_stats,
-            'success_rate': round((1 - self.errors / max(self.messages_sent, 1)) * 100, 2)
+            "latency": latency_stats,
+            "success_rate": round(
+                (1 - self.errors / max(self.messages_sent, 1)) * 100, 2
+            ),
         }
 
 
@@ -111,9 +128,9 @@ class LoadTestClient:
                     "from": self.client_id,
                     "to": to,
                     "text": text,
-                    "timestamp": int(time.time() * 1000)
+                    "timestamp": int(time.time() * 1000),
                 },
-                timeout=5
+                timeout=5,
             )
 
             latency = (time.time() - start) * 1000
@@ -172,16 +189,17 @@ class LoadTestClient:
 class LoadTester:
     """Load testing coordinator"""
 
-    def __init__(self,
-                 server_url: str = "http://localhost:5001",
-                 ws_url: str = "ws://localhost:5001"):
+    def __init__(
+        self,
+        server_url: str = "http://localhost:5001",
+        ws_url: str = "ws://localhost:5001",
+    ):
         self.server_url = server_url
         self.ws_url = ws_url
 
-    def run_throughput_test(self,
-                           num_clients: int = 100,
-                           duration_seconds: int = 60,
-                           message_rate: int = 10) -> LoadTestResults:
+    def run_throughput_test(
+        self, num_clients: int = 100, duration_seconds: int = 60, message_rate: int = 10
+    ) -> LoadTestResults:
         """
         Test message throughput
 
@@ -199,7 +217,9 @@ class LoadTester:
         logger.info(f"Clients: {num_clients}")
         logger.info(f"Duration: {duration_seconds}s")
         logger.info(f"Rate: {message_rate} msg/s per client")
-        logger.info(f"Expected total: {num_clients * message_rate * duration_seconds} messages")
+        logger.info(
+            f"Expected total: {num_clients * message_rate * duration_seconds} messages"
+        )
         logger.info("=" * 80)
 
         # Create clients
@@ -240,8 +260,7 @@ class LoadTester:
 
         # Collect results
         results = LoadTestResults(
-            total_clients=num_clients,
-            duration_seconds=actual_duration
+            total_clients=num_clients, duration_seconds=actual_duration
         )
 
         for client in clients:
@@ -299,14 +318,14 @@ class LoadTester:
         results = LoadTestResults(
             total_clients=num_clients,
             duration_seconds=duration,
-            connection_errors=errors
+            connection_errors=errors,
         )
 
         return results
 
-    def run_room_test(self,
-                     num_rooms: int = 50,
-                     members_per_room: int = 5) -> LoadTestResults:
+    def run_room_test(
+        self, num_rooms: int = 50, members_per_room: int = 5
+    ) -> LoadTestResults:
         """
         Test collaboration room handling
 
@@ -337,7 +356,7 @@ class LoadTester:
                 response = requests.post(
                     f"{self.server_url}/collab/room",
                     json={"room_id": room_id, "topic": f"Load test room {room_i}"},
-                    timeout=5
+                    timeout=5,
                 )
 
                 if response.status_code == 200:
@@ -352,7 +371,7 @@ class LoadTester:
                     response = requests.post(
                         f"{self.server_url}/collab/room/{room_id}/join",
                         json={"client_id": client_id, "role": "member"},
-                        timeout=5
+                        timeout=5,
                     )
 
                     if response.status_code == 200:
@@ -374,24 +393,30 @@ class LoadTester:
             total_clients=num_rooms * members_per_room,
             duration_seconds=duration,
             messages_sent=successes,
-            errors=errors
+            errors=errors,
         )
 
         return results
 
 
 # CLI
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Load testing for Claude Bridge")
-    parser.add_argument('--url', default='http://localhost:5001', help='Server URL')
-    parser.add_argument('--ws-url', default='ws://localhost:5001', help='WebSocket URL')
-    parser.add_argument('--test', choices=['throughput', 'connections', 'rooms', 'all'], default='all')
-    parser.add_argument('--clients', type=int, default=100, help='Number of clients')
-    parser.add_argument('--duration', type=int, default=60, help='Test duration (seconds)')
-    parser.add_argument('--rate', type=int, default=10, help='Messages per second per client')
-    parser.add_argument('--output', help='Save results to JSON file')
+    parser.add_argument("--url", default="http://localhost:5001", help="Server URL")
+    parser.add_argument("--ws-url", default="ws://localhost:5001", help="WebSocket URL")
+    parser.add_argument(
+        "--test", choices=["throughput", "connections", "rooms", "all"], default="all"
+    )
+    parser.add_argument("--clients", type=int, default=100, help="Number of clients")
+    parser.add_argument(
+        "--duration", type=int, default=60, help="Test duration (seconds)"
+    )
+    parser.add_argument(
+        "--rate", type=int, default=10, help="Messages per second per client"
+    )
+    parser.add_argument("--output", help="Save results to JSON file")
 
     args = parser.parse_args()
 
@@ -406,32 +431,32 @@ if __name__ == '__main__':
     print("=" * 80)
     print()
 
-    if args.test in ['throughput', 'all']:
+    if args.test in ["throughput", "all"]:
         results = tester.run_throughput_test(args.clients, args.duration, args.rate)
-        all_results['throughput'] = results.get_summary()
+        all_results["throughput"] = results.get_summary()
         print()
         print("📊 THROUGHPUT RESULTS:")
         print(json.dumps(results.get_summary(), indent=2))
         print()
 
-    if args.test in ['connections', 'all']:
+    if args.test in ["connections", "all"]:
         results = tester.run_connection_test(args.clients)
-        all_results['connections'] = results.get_summary()
+        all_results["connections"] = results.get_summary()
         print()
         print("📊 CONNECTION RESULTS:")
         print(json.dumps(results.get_summary(), indent=2))
         print()
 
-    if args.test in ['rooms', 'all']:
+    if args.test in ["rooms", "all"]:
         results = tester.run_room_test(num_rooms=20, members_per_room=5)
-        all_results['rooms'] = results.get_summary()
+        all_results["rooms"] = results.get_summary()
         print()
         print("📊 ROOM RESULTS:")
         print(json.dumps(results.get_summary(), indent=2))
         print()
 
     if args.output:
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             json.dump(all_results, f, indent=2)
         print(f"✅ Results saved to {args.output}")
 

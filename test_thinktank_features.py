@@ -5,11 +5,7 @@ Tests critique, debate, amendment, and alternative proposal capabilities
 """
 import pytest
 from datetime import datetime, timezone
-from collaboration_enhanced import (
-    EnhancedCollaborationHub,
-    MemberRole,
-    VoteType
-)
+from collaboration_enhanced import EnhancedCollaborationHub, MemberRole, VoteType
 
 
 @pytest.fixture
@@ -47,7 +43,7 @@ class TestCritiqueSystem:
             "reviewer",
             msg.id,
             "MongoDB doesn't support ACID transactions, which we need for financial data",
-            severity="blocking"
+            severity="blocking",
         )
 
         assert critique.type == "critique"
@@ -65,10 +61,7 @@ class TestCritiqueSystem:
         severities = ["blocking", "major", "minor", "suggestion"]
         for i, severity in enumerate(severities):
             critique = room.send_critique(
-                "reviewer",
-                msg.id,
-                f"Test critique {i}",
-                severity=severity
+                "reviewer", msg.id, f"Test critique {i}", severity=severity
             )
             assert room.critiques[i].severity == severity
 
@@ -77,11 +70,7 @@ class TestCritiqueSystem:
     def test_critique_invalid_target(self, room):
         """Critiquing non-existent message should fail"""
         with pytest.raises(ValueError, match="not found"):
-            room.send_critique(
-                "reviewer",
-                "invalid-message-id",
-                "This should fail"
-            )
+            room.send_critique("reviewer", "invalid-message-id", "This should fail")
 
     def test_critique_invalid_severity(self, room):
         """Invalid severity should fail"""
@@ -89,10 +78,7 @@ class TestCritiqueSystem:
 
         with pytest.raises(ValueError, match="Invalid severity"):
             room.send_critique(
-                "reviewer",
-                msg.id,
-                "Test",
-                severity="critical"  # Invalid
+                "reviewer", msg.id, "Test", severity="critical"  # Invalid
             )
 
     def test_get_critiques_for_message(self, room):
@@ -128,16 +114,12 @@ class TestCounterProposals:
         """Agent proposes alternative to decision"""
         # Original decision
         original_id = room.propose_decision(
-            "coordinator",
-            "Use Python for ML pipeline",
-            vote_type=VoteType.CONSENSUS
+            "coordinator", "Use Python for ML pipeline", vote_type=VoteType.CONSENSUS
         )
 
         # Researcher proposes alternative
         alt_id = room.propose_alternative(
-            "researcher",
-            original_id,
-            "Use Julia - fast as C++ with Python-like syntax"
+            "researcher", original_id, "Use Julia - fast as C++ with Python-like syntax"
         )
 
         # Verify alternative created
@@ -152,9 +134,7 @@ class TestCounterProposals:
     def test_multiple_alternatives(self, room):
         """Multiple agents propose alternatives"""
         original_id = room.propose_decision(
-            "coordinator",
-            "Use MongoDB for storage",
-            vote_type=VoteType.SIMPLE_MAJORITY
+            "coordinator", "Use MongoDB for storage", vote_type=VoteType.SIMPLE_MAJORITY
         )
 
         # 3 alternatives
@@ -169,16 +149,10 @@ class TestCounterProposals:
     def test_alternative_inherits_vote_type(self, room):
         """Alternative inherits vote type from original"""
         original_id = room.propose_decision(
-            "coordinator",
-            "Original decision",
-            vote_type=VoteType.CONSENSUS
+            "coordinator", "Original decision", vote_type=VoteType.CONSENSUS
         )
 
-        alt_id = room.propose_alternative(
-            "reviewer",
-            original_id,
-            "Alternative"
-        )
+        alt_id = room.propose_alternative("reviewer", original_id, "Alternative")
 
         alt_decision = next(d for d in room.decisions if d.id == alt_id)
         assert alt_decision.vote_type == VoteType.CONSENSUS
@@ -186,11 +160,7 @@ class TestCounterProposals:
     def test_alternative_invalid_decision(self, room):
         """Proposing alternative to non-existent decision fails"""
         with pytest.raises(ValueError, match="not found"):
-            room.propose_alternative(
-                "reviewer",
-                "invalid-decision-id",
-                "Alternative"
-            )
+            room.propose_alternative("reviewer", "invalid-decision-id", "Alternative")
 
 
 class TestStructuredDebate:
@@ -199,16 +169,14 @@ class TestStructuredDebate:
     def test_add_pro_argument(self, room):
         """Add pro argument to debate"""
         decision_id = room.propose_decision(
-            "coordinator",
-            "Use Python for ML",
-            vote_type=VoteType.SIMPLE_MAJORITY
+            "coordinator", "Use Python for ML", vote_type=VoteType.SIMPLE_MAJORITY
         )
 
         arg_id = room.add_debate_argument(
             "coder",
             decision_id,
             position="pro",
-            argument_text="Python has best ML libraries (PyTorch, TensorFlow)"
+            argument_text="Python has best ML libraries (PyTorch, TensorFlow)",
         )
 
         assert len(room.debate_arguments) == 1
@@ -219,16 +187,13 @@ class TestStructuredDebate:
 
     def test_add_con_argument(self, room):
         """Add con argument to debate"""
-        decision_id = room.propose_decision(
-            "coordinator",
-            "Use Python for ML"
-        )
+        decision_id = room.propose_decision("coordinator", "Use Python for ML")
 
         arg_id = room.add_debate_argument(
             "tester",
             decision_id,
             position="con",
-            argument_text="Python GIL limits parallelism"
+            argument_text="Python GIL limits parallelism",
         )
 
         assert room.debate_arguments[0].position == "con"
@@ -238,17 +203,14 @@ class TestStructuredDebate:
         """Add argument with supporting evidence"""
         decision_id = room.propose_decision("coordinator", "Test decision")
 
-        evidence = [
-            "https://benchmark.com/python-vs-julia",
-            "file-id-12345"
-        ]
+        evidence = ["https://benchmark.com/python-vs-julia", "file-id-12345"]
 
         arg_id = room.add_debate_argument(
             "researcher",
             decision_id,
             position="pro",
             argument_text="Julia is 10x faster",
-            evidence=evidence
+            evidence=evidence,
         )
 
         assert room.debate_arguments[0].supporting_evidence == evidence
@@ -265,10 +227,10 @@ class TestStructuredDebate:
         room.add_debate_argument("coordinator", decision_id, "con", "Con 2")
 
         summary = room.get_debate_summary(decision_id)
-        assert summary['total_pro'] == 3
-        assert summary['total_con'] == 2
-        assert len(summary['pro']) == 3
-        assert len(summary['con']) == 2
+        assert summary["total_pro"] == 3
+        assert summary["total_con"] == 2
+        assert len(summary["pro"]) == 3
+        assert len(summary["con"]) == 2
 
     def test_debate_invalid_position(self, room):
         """Invalid position should fail"""
@@ -279,18 +241,13 @@ class TestStructuredDebate:
                 "coder",
                 decision_id,
                 position="neutral",  # Invalid
-                argument_text="Test"
+                argument_text="Test",
             )
 
     def test_debate_invalid_decision(self, room):
         """Debating non-existent decision fails"""
         with pytest.raises(ValueError, match="not found"):
-            room.add_debate_argument(
-                "coder",
-                "invalid-decision-id",
-                "pro",
-                "Test"
-            )
+            room.add_debate_argument("coder", "invalid-decision-id", "pro", "Test")
 
 
 class TestAmendmentSystem:
@@ -298,42 +255,33 @@ class TestAmendmentSystem:
 
     def test_propose_amendment(self, room):
         """Propose amendment to decision"""
-        decision_id = room.propose_decision(
-            "coordinator",
-            "Use Python for ML pipeline"
-        )
+        decision_id = room.propose_decision("coordinator", "Use Python for ML pipeline")
 
         amend_id = room.propose_amendment(
-            "reviewer",
-            decision_id,
-            "Use Python for training, C++ for inference"
+            "reviewer", decision_id, "Use Python for training, C++ for inference"
         )
 
         decision = next(d for d in room.decisions if d.id == decision_id)
         assert len(decision.amendments) == 1
-        assert decision.amendments[0]['text'] == "Use Python for training, C++ for inference"
-        assert decision.amendments[0]['from'] == "reviewer"
-        assert decision.amendments[0]['accepted'] == False
+        assert (
+            decision.amendments[0]["text"]
+            == "Use Python for training, C++ for inference"
+        )
+        assert decision.amendments[0]["from"] == "reviewer"
+        assert decision.amendments[0]["accepted"] == False
 
     def test_accept_amendment(self, room):
         """Accept amendment updates decision text"""
-        decision_id = room.propose_decision(
-            "coordinator",
-            "Original text"
-        )
+        decision_id = room.propose_decision("coordinator", "Original text")
 
-        amend_id = room.propose_amendment(
-            "reviewer",
-            decision_id,
-            "Amended text"
-        )
+        amend_id = room.propose_amendment("reviewer", decision_id, "Amended text")
 
         # Accept amendment
         room.accept_amendment(decision_id, amend_id)
 
         decision = next(d for d in room.decisions if d.id == decision_id)
         assert decision.text == "Amended text"
-        assert decision.amendments[0]['accepted'] == True
+        assert decision.amendments[0]["accepted"] == True
 
     def test_multiple_amendments(self, room):
         """Multiple amendments can be proposed"""
@@ -349,11 +297,7 @@ class TestAmendmentSystem:
     def test_amendment_invalid_decision(self, room):
         """Amending non-existent decision fails"""
         with pytest.raises(ValueError, match="not found"):
-            room.propose_amendment(
-                "reviewer",
-                "invalid-decision-id",
-                "Amendment"
-            )
+            room.propose_amendment("reviewer", "invalid-decision-id", "Amendment")
 
     def test_accept_nonexistent_amendment(self, room):
         """Accepting non-existent amendment fails"""
@@ -381,9 +325,7 @@ class TestFullThinkTankWorkflow:
         """
         # 1. Propose decision
         decision_id = room.propose_decision(
-            "coordinator",
-            "Use Python for ML pipeline",
-            vote_type=VoteType.CONSENSUS
+            "coordinator", "Use Python for ML pipeline", vote_type=VoteType.CONSENSUS
         )
 
         # 2. Reviewer critiques (blocking)
@@ -391,15 +333,13 @@ class TestFullThinkTankWorkflow:
             "reviewer",
             decision_id,
             "Python is too slow for real-time inference. Consider C++ or Rust.",
-            severity="blocking"
+            severity="blocking",
         )
         assert room.critiques[0].severity == "blocking"
 
         # 3. Coordinator proposes amendment
         amendment_id = room.propose_amendment(
-            "coordinator",
-            decision_id,
-            "Use Python for training, C++ for inference"
+            "coordinator", decision_id, "Use Python for training, C++ for inference"
         )
         assert len(room.decisions[0].amendments) == 1
 
@@ -408,7 +348,7 @@ class TestFullThinkTankWorkflow:
             "coder",
             decision_id,
             position="pro",
-            argument_text="Python has best ML libraries (PyTorch, TensorFlow)"
+            argument_text="Python has best ML libraries (PyTorch, TensorFlow)",
         )
 
         # 5. Tester adds con argument
@@ -416,20 +356,18 @@ class TestFullThinkTankWorkflow:
             "tester",
             decision_id,
             position="con",
-            argument_text="Python GIL limits parallelism"
+            argument_text="Python GIL limits parallelism",
         )
 
         # 6. Researcher proposes alternative
         alt_id = room.propose_alternative(
-            "researcher",
-            decision_id,
-            "Use Julia - fast as C++ with Python-like syntax"
+            "researcher", decision_id, "Use Julia - fast as C++ with Python-like syntax"
         )
 
         # 7. Get debate summary
         debate_summary = room.get_debate_summary(decision_id)
-        assert debate_summary['total_pro'] == 1
-        assert debate_summary['total_con'] == 1
+        assert debate_summary["total_pro"] == 1
+        assert debate_summary["total_con"] == 1
 
         # 8. Accept amendment
         room.accept_amendment(decision_id, amendment_id)
@@ -451,9 +389,7 @@ class TestFullThinkTankWorkflow:
         - Proposal → critique → amend → vote → repeat until consensus
         """
         decision_id = room.propose_decision(
-            "coordinator",
-            "Deploy on Friday at 5pm",
-            vote_type=VoteType.SIMPLE_MAJORITY
+            "coordinator", "Deploy on Friday at 5pm", vote_type=VoteType.SIMPLE_MAJORITY
         )
 
         # Critique 1: Bad timing
@@ -461,14 +397,12 @@ class TestFullThinkTankWorkflow:
             "reviewer",
             decision_id,
             "Friday evening is risky - no support team on weekend",
-            severity="major"
+            severity="major",
         )
 
         # Amendment 1: Change to Thursday
         amend1 = room.propose_amendment(
-            "coordinator",
-            decision_id,
-            "Deploy on Thursday at 2pm"
+            "coordinator", decision_id, "Deploy on Thursday at 2pm"
         )
         room.accept_amendment(decision_id, amend1)
 
@@ -477,14 +411,12 @@ class TestFullThinkTankWorkflow:
             "tester",
             decision_id,
             "2pm is during peak usage - consider off-hours",
-            severity="minor"
+            severity="minor",
         )
 
         # Amendment 2: Early morning
         amend2 = room.propose_amendment(
-            "coordinator",
-            decision_id,
-            "Deploy on Thursday at 6am"
+            "coordinator", decision_id, "Deploy on Thursday at 6am"
         )
         room.accept_amendment(decision_id, amend2)
 
@@ -508,9 +440,7 @@ class TestFullThinkTankWorkflow:
         """
         # Original
         original_id = room.propose_decision(
-            "coordinator",
-            "Use MongoDB",
-            vote_type=VoteType.WEIGHTED
+            "coordinator", "Use MongoDB", vote_type=VoteType.WEIGHTED
         )
 
         # Alternatives
@@ -548,7 +478,7 @@ class TestThinkTankEdgeCases:
             "coordinator",
             msg.id,
             "On second thought, we need ACID transactions",
-            severity="major"
+            severity="major",
         )
 
         assert critique.from_client == "coordinator"
@@ -559,10 +489,10 @@ class TestThinkTankEdgeCases:
         decision_id = room.propose_decision("coordinator", "Test")
 
         summary = room.get_debate_summary(decision_id)
-        assert summary['total_pro'] == 0
-        assert summary['total_con'] == 0
-        assert len(summary['pro']) == 0
-        assert len(summary['con']) == 0
+        assert summary["total_pro"] == 0
+        assert summary["total_con"] == 0
+        assert len(summary["pro"]) == 0
+        assert len(summary["con"]) == 0
 
     def test_amendment_without_acceptance(self, room):
         """Unaccepted amendments don't change decision text"""
@@ -574,8 +504,8 @@ class TestThinkTankEdgeCases:
         decision = room.decisions[0]
         assert decision.text == "Original"  # Unchanged
         assert len(decision.amendments) == 2
-        assert all(not a['accepted'] for a in decision.amendments)
+        assert all(not a["accepted"] for a in decision.amendments)
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--tb=short'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

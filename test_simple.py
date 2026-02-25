@@ -8,11 +8,11 @@ print("Testing server collaboration features...")
 # Check server status
 print("\n1. Checking server status...")
 try:
-    resp = requests.get('http://localhost:5001/api/status')
+    resp = requests.get("http://localhost:5001/api/status")
     data = resp.json()
     print(f"   Server version: {data['version']}")
     print(f"   Collaboration enabled: {data['features']['collaboration']}")
-    if data['features']['collaboration']:
+    if data["features"]["collaboration"]:
         print("   ✅ Collaboration features available")
     else:
         print("   ❌ Collaboration features disabled")
@@ -24,7 +24,7 @@ except Exception as e:
 # List rooms (should be empty initially)
 print("\n2. Listing collaboration rooms...")
 try:
-    resp = requests.get('http://localhost:5001/api/collab/rooms')
+    resp = requests.get("http://localhost:5001/api/collab/rooms")
     data = resp.json()
     print(f"   Status: {data['status']}")
     print(f"   Total rooms: {data['total']}")

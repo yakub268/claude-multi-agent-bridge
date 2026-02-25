@@ -52,8 +52,8 @@ def parse_iso_timestamp(timestamp_str: str) -> datetime:
         >>> parse_iso_timestamp("2026-02-22T15:30:45")
     """
     # Replace 'Z' with '+00:00' for Python's fromisoformat
-    if timestamp_str.endswith('Z'):
-        timestamp_str = timestamp_str[:-1] + '+00:00'
+    if timestamp_str.endswith("Z"):
+        timestamp_str = timestamp_str[:-1] + "+00:00"
 
     try:
         dt = datetime.fromisoformat(timestamp_str)
@@ -148,7 +148,7 @@ def format_duration(seconds: float) -> str:
 
 
 # Example usage
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("Datetime Utilities - Test")
     print("=" * 80)

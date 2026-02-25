@@ -28,12 +28,14 @@ from pathlib import Path
 
 class SecurityError(Exception):
     """Raised when a security violation is detected"""
+
     pass
 
 
 # Import persistence layer
 try:
     from collab_persistence import CollabPersistence
+
     PERSISTENCE_ENABLED = True
 except ImportError:
     PERSISTENCE_ENABLED = False
@@ -41,6 +43,7 @@ except ImportError:
 
 class MemberRole(Enum):
     """Claude member roles"""
+
     COORDINATOR = "coordinator"
     RESEARCHER = "researcher"
     CODER = "coder"
@@ -52,6 +55,7 @@ class MemberRole(Enum):
 
 class VoteType(Enum):
     """Voting types"""
+
     SIMPLE_MAJORITY = "simple_majority"  # >50% approval
     CONSENSUS = "consensus"  # 100% approval (all must agree)
     QUORUM = "quorum"  # Minimum participation required
@@ -60,6 +64,7 @@ class VoteType(Enum):
 
 class CodeLanguage(Enum):
     """Supported code execution languages"""
+
     PYTHON = "python"
     JAVASCRIPT = "javascript"
     BASH = "bash"
@@ -68,6 +73,7 @@ class CodeLanguage(Enum):
 @dataclass
 class RoomMember:
     """Member of collaboration room"""
+
     client_id: str
     role: MemberRole = MemberRole.PARTICIPANT
     joined_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -79,6 +85,7 @@ class RoomMember:
 @dataclass
 class RoomMessage:
     """Message in collaboration room"""
+
     id: str
     from_client: str
     text: str
@@ -94,6 +101,7 @@ class RoomMessage:
 @dataclass
 class SharedFile:
     """File shared in room"""
+
     id: str
     name: str
     content: bytes
@@ -107,6 +115,7 @@ class SharedFile:
 @dataclass
 class CodeExecution:
     """Code execution result"""
+
     id: str
     code: str
     language: CodeLanguage
@@ -121,6 +130,7 @@ class CodeExecution:
 @dataclass
 class EnhancedDecision:
     """Enhanced decision with advanced voting"""
+
     id: str
     text: str
     proposed_by: str
@@ -140,6 +150,7 @@ class EnhancedDecision:
 @dataclass
 class Critique:
     """Structured critique of a message or decision"""
+
     id: str
     target_message_id: str
     from_client: str
@@ -152,6 +163,7 @@ class Critique:
 @dataclass
 class DebateArgument:
     """Structured argument in debate"""
+
     id: str
     decision_id: str
     from_client: str
@@ -166,6 +178,7 @@ class CollaborationChannel:
     Sub-channel for focused discussions
     Like Discord channels within a server
     """
+
     def __init__(self, channel_id: str, name: str, topic: str = ""):
         self.channel_id = channel_id
         self.name = name
@@ -195,9 +208,13 @@ class EnhancedCollaborationRoom:
     - Persistent storage ready
     """
 
-    def __init__(self, room_id: str, topic: str = "General Collaboration",
-                 persistence_enabled: bool = True,
-                 max_total_file_size_mb: int = 100):
+    def __init__(
+        self,
+        room_id: str,
+        topic: str = "General Collaboration",
+        persistence_enabled: bool = True,
+        max_total_file_size_mb: int = 100,
+    ):
         self.room_id = room_id
         self.topic = topic
         self.members: Dict[str, RoomMember] = {}
@@ -215,7 +232,9 @@ class EnhancedCollaborationRoom:
         self.debate_arguments: List[DebateArgument] = []
 
         # Memory management
-        self.max_total_file_size = max_total_file_size_mb * 1024 * 1024  # Convert MB to bytes
+        self.max_total_file_size = (
+            max_total_file_size_mb * 1024 * 1024
+        )  # Convert MB to bytes
         self._current_file_size = 0
 
         # Callbacks
@@ -228,7 +247,9 @@ class EnhancedCollaborationRoom:
             self.persistence = CollabPersistence()
             self.persistence.save_room(room_id, topic, self.created_at)
 
-    def _create_channel(self, channel_id: str, name: str, topic: str = "") -> CollaborationChannel:
+    def _create_channel(
+        self, channel_id: str, name: str, topic: str = ""
+    ) -> CollaborationChannel:
         """Create new channel"""
         channel = CollaborationChannel(channel_id, name, topic)
         self.channels[channel_id] = channel
@@ -251,8 +272,7 @@ class EnhancedCollaborationRoom:
 
         # Broadcast creation
         self._broadcast_system_message(
-            f"📺 Channel created: #{name} - {topic}",
-            channel="main"
+            f"📺 Channel created: #{name} - {topic}", channel="main"
         )
 
         return channel_id
@@ -269,8 +289,12 @@ class EnhancedCollaborationRoom:
         if channel_id in self.channels:
             self.channels[channel_id].members.discard(client_id)
 
-    def join(self, client_id: str, role: MemberRole = MemberRole.PARTICIPANT,
-            vote_weight: float = 1.0) -> bool:
+    def join(
+        self,
+        client_id: str,
+        role: MemberRole = MemberRole.PARTICIPANT,
+        vote_weight: float = 1.0,
+    ) -> bool:
         """
         Join the collaboration room
 
@@ -294,13 +318,10 @@ class EnhancedCollaborationRoom:
         # Persist member
         if self.persistence:
             self.persistence.save_member(
-                self.room_id, client_id, role.value,
-                member.joined_at, vote_weight
+                self.room_id, client_id, role.value, member.joined_at, vote_weight
             )
 
-        self._broadcast_system_message(
-            f"🎉 {client_id} ({role.value}) joined the room"
-        )
+        self._broadcast_system_message(f"🎉 {client_id} ({role.value}) joined the room")
 
         return True
 
@@ -310,15 +331,17 @@ class EnhancedCollaborationRoom:
             member = self.members[client_id]
             member.active = False
 
-            self._broadcast_system_message(
-                f"👋 {client_id} left the room"
-            )
+            self._broadcast_system_message(f"👋 {client_id} left the room")
 
-    def send_message(self, from_client: str, text: str,
-                    reply_to: Optional[str] = None,
-                    msg_type: str = "message",
-                    channel: str = "main",
-                    attachments: List[Dict] = None) -> RoomMessage:
+    def send_message(
+        self,
+        from_client: str,
+        text: str,
+        reply_to: Optional[str] = None,
+        msg_type: str = "message",
+        channel: str = "main",
+        attachments: List[Dict] = None,
+    ) -> RoomMessage:
         """
         Send message to channel
 
@@ -352,7 +375,7 @@ class EnhancedCollaborationRoom:
             reply_to=reply_to,
             type=msg_type,
             channel=channel,
-            attachments=attachments or []
+            attachments=attachments or [],
         )
 
         # Add to channel
@@ -364,8 +387,14 @@ class EnhancedCollaborationRoom:
         # Persist message
         if self.persistence:
             self.persistence.save_message(
-                message.id, self.room_id, from_client, text,
-                message.timestamp, msg_type, channel, reply_to
+                message.id,
+                self.room_id,
+                from_client,
+                text,
+                message.timestamp,
+                msg_type,
+                channel,
+                reply_to,
             )
 
         # Trigger callbacks
@@ -373,9 +402,14 @@ class EnhancedCollaborationRoom:
 
         return message
 
-    def upload_file(self, client_id: str, file_name: str, file_content: bytes,
-                   content_type: str = "application/octet-stream",
-                   channel: str = "main") -> str:
+    def upload_file(
+        self,
+        client_id: str,
+        file_name: str,
+        file_content: bytes,
+        content_type: str = "application/octet-stream",
+        channel: str = "main",
+    ) -> str:
         """
         Upload file to room
 
@@ -423,7 +457,7 @@ class EnhancedCollaborationRoom:
             uploaded_at=datetime.now(timezone.utc),
             size=len(file_content),
             content_type=content_type,
-            channel=channel
+            channel=channel,
         )
 
         self.files[file_id] = shared_file
@@ -432,9 +466,15 @@ class EnhancedCollaborationRoom:
         # Persist file
         if self.persistence:
             self.persistence.save_file(
-                file_id, self.room_id, file_name, client_id,
-                shared_file.uploaded_at, len(file_content),
-                content_type, file_content, channel
+                file_id,
+                self.room_id,
+                file_name,
+                client_id,
+                shared_file.uploaded_at,
+                len(file_content),
+                content_type,
+                file_content,
+                channel,
             )
 
         # Announce upload
@@ -443,12 +483,14 @@ class EnhancedCollaborationRoom:
             f"📎 Uploaded file: {file_name} ({len(file_content)} bytes)",
             channel=channel,
             msg_type="file_upload",
-            attachments=[{
-                'file_id': file_id,
-                'file_name': file_name,
-                'size': len(file_content),
-                'type': content_type
-            }]
+            attachments=[
+                {
+                    "file_id": file_id,
+                    "file_name": file_name,
+                    "size": len(file_content),
+                    "type": content_type,
+                }
+            ],
         )
 
         return file_id
@@ -468,10 +510,7 @@ class EnhancedCollaborationRoom:
             return
 
         # Sort files by upload time (oldest first)
-        sorted_files = sorted(
-            self.files.items(),
-            key=lambda x: x[1].uploaded_at
-        )
+        sorted_files = sorted(self.files.items(), key=lambda x: x[1].uploaded_at)
 
         freed_bytes = 0
         evicted_count = 0
@@ -489,7 +528,7 @@ class EnhancedCollaborationRoom:
             # Announce eviction
             self._broadcast_system_message(
                 f"🗑️ File evicted due to storage limits: {shared_file.name} ({shared_file.size} bytes)",
-                channel="main"
+                channel="main",
             )
 
         if evicted_count > 0:
@@ -499,8 +538,9 @@ class EnhancedCollaborationRoom:
                 f"freed {freed_bytes / 1024 / 1024:.1f}MB"
             )
 
-    def execute_code(self, client_id: str, code: str, language: CodeLanguage,
-                    channel: str = "main") -> CodeExecution:
+    def execute_code(
+        self, client_id: str, code: str, language: CodeLanguage, channel: str = "main"
+    ) -> CodeExecution:
         """
         Execute code in sandbox
 
@@ -520,7 +560,8 @@ class EnhancedCollaborationRoom:
         # To enable, set ENABLE_CODE_EXECUTION=true environment variable
         # AND use Docker sandboxing (see deployment docs)
         import os
-        if not os.getenv('ENABLE_CODE_EXECUTION', 'false').lower() == 'true':
+
+        if not os.getenv("ENABLE_CODE_EXECUTION", "false").lower() == "true":
             raise SecurityError(
                 "Code execution is disabled for security reasons. "
                 "This feature allows arbitrary code execution and poses "
@@ -556,7 +597,7 @@ class EnhancedCollaborationRoom:
             output=output,
             error=error,
             exit_code=exit_code,
-            execution_time_ms=execution_time_ms
+            execution_time_ms=execution_time_ms,
         )
 
         self.code_executions.append(execution)
@@ -570,26 +611,23 @@ class EnhancedCollaborationRoom:
         result_text += f"\n⏱️ {execution_time_ms:.1f}ms"
 
         self.send_message(
-            client_id,
-            result_text,
-            channel=channel,
-            msg_type="code_execution"
+            client_id, result_text, channel=channel, msg_type="code_execution"
         )
 
         return execution
 
     def _execute_python(self, code: str) -> tuple:
         """Execute Python code in sandbox"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(code)
             temp_file = f.name
 
         try:
             result = subprocess.run(
-                ['python', temp_file],
+                ["python", temp_file],
                 capture_output=True,
                 text=True,
-                timeout=30  # 30 seconds (increased from 5s for complex tasks)
+                timeout=30,  # 30 seconds (increased from 5s for complex tasks)
             )
             return result.stdout, result.stderr, result.returncode
         finally:
@@ -597,16 +635,16 @@ class EnhancedCollaborationRoom:
 
     def _execute_javascript(self, code: str) -> tuple:
         """Execute JavaScript code using Node.js"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
             f.write(code)
             temp_file = f.name
 
         try:
             result = subprocess.run(
-                ['node', temp_file],
+                ["node", temp_file],
                 capture_output=True,
                 text=True,
-                timeout=30  # 30 seconds (increased from 5s for complex tasks)
+                timeout=30,  # 30 seconds (increased from 5s for complex tasks)
             )
             return result.stdout, result.stderr, result.returncode
         except FileNotFoundError:
@@ -617,17 +655,17 @@ class EnhancedCollaborationRoom:
     def _execute_bash(self, code: str) -> tuple:
         """Execute Bash script"""
         result = subprocess.run(
-            code,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=5
+            code, shell=True, capture_output=True, text=True, timeout=5
         )
         return result.stdout, result.stderr, result.returncode
 
-    def propose_decision(self, from_client: str, decision: str,
-                        vote_type: VoteType = VoteType.SIMPLE_MAJORITY,
-                        required_votes: int = None) -> str:
+    def propose_decision(
+        self,
+        from_client: str,
+        decision: str,
+        vote_type: VoteType = VoteType.SIMPLE_MAJORITY,
+        required_votes: int = None,
+    ) -> str:
         """
         Propose a decision with enhanced voting
 
@@ -651,13 +689,13 @@ class EnhancedCollaborationRoom:
             VoteType.SIMPLE_MAJORITY: "Simple Majority (>50%)",
             VoteType.CONSENSUS: "Consensus (100%)",
             VoteType.QUORUM: f"Quorum ({required_votes} votes)",
-            VoteType.WEIGHTED: "Weighted Vote"
+            VoteType.WEIGHTED: "Weighted Vote",
         }
 
         msg = self.send_message(
             from_client,
             f"🎯 DECISION: {decision}\n📊 Vote Type: {vote_type_desc[vote_type]}",
-            msg_type="decision"
+            msg_type="decision",
         )
 
         enhanced_decision = EnhancedDecision(
@@ -666,20 +704,27 @@ class EnhancedCollaborationRoom:
             proposed_by=from_client,
             proposed_at=msg.timestamp,
             vote_type=vote_type,
-            required_votes=required_votes
+            required_votes=required_votes,
         )
         self.decisions.append(enhanced_decision)
 
         # Persist decision
         if self.persistence:
             self.persistence.save_decision(
-                msg.id, self.room_id, decision, from_client,
-                msg.timestamp, vote_type.value, required_votes
+                msg.id,
+                self.room_id,
+                decision,
+                from_client,
+                msg.timestamp,
+                vote_type.value,
+                required_votes,
             )
 
         return msg.id
 
-    def vote(self, decision_id: str, voter: str, approve: bool = True, veto: bool = False):
+    def vote(
+        self, decision_id: str, voter: str, approve: bool = True, veto: bool = False
+    ):
         """
         Vote on decision
 
@@ -705,7 +750,9 @@ class EnhancedCollaborationRoom:
             # Persist vote
             if self.persistence:
                 self.persistence.save_vote(decision_id, voter, approve=False, veto=True)
-                self.persistence.update_decision_status(decision_id, approved=False, vetoed=True)
+                self.persistence.update_decision_status(
+                    decision_id, approved=False, vetoed=True
+                )
 
             self._broadcast_system_message(
                 f"🚫 {voter} vetoed decision: {decision.text}"
@@ -750,8 +797,7 @@ class EnhancedCollaborationRoom:
         elif decision.vote_type == VoteType.WEIGHTED:
             # Weighted by role
             total_weight = sum(
-                self.members[voter].vote_weight
-                for voter in decision.approved_by
+                self.members[voter].vote_weight for voter in decision.approved_by
             )
             max_weight = sum(m.vote_weight for m in self.members.values() if m.active)
             if total_weight > max_weight / 2:
@@ -761,13 +807,15 @@ class EnhancedCollaborationRoom:
         if decision.approved:
             # Persist approval status
             if self.persistence:
-                self.persistence.update_decision_status(decision.id, approved=True, vetoed=False)
+                self.persistence.update_decision_status(
+                    decision.id, approved=True, vetoed=False
+                )
 
-            self._broadcast_system_message(
-                f"✅ Decision approved: {decision.text}"
-            )
+            self._broadcast_system_message(f"✅ Decision approved: {decision.text}")
 
-    def get_messages(self, channel: str = "main", limit: int = 100) -> List[RoomMessage]:
+    def get_messages(
+        self, channel: str = "main", limit: int = 100
+    ) -> List[RoomMessage]:
         """Get messages from channel"""
         if channel not in self.channels:
             return []
@@ -778,26 +826,27 @@ class EnhancedCollaborationRoom:
         active_members = [m for m in self.members.values() if m.active]
 
         return {
-            'room_id': self.room_id,
-            'topic': self.topic,
-            'created_at': self.created_at.isoformat(),
-            'total_members': len(self.members),
-            'active_members': len(active_members),
-            'channels': len(self.channels),
-            'total_messages': sum(len(ch.messages) for ch in self.channels.values()),
-            'total_decisions': len(self.decisions),
-            'approved_decisions': sum(1 for d in self.decisions if d.approved),
-            'vetoed_decisions': sum(1 for d in self.decisions if d.vetoed),
-            'total_tasks': len(self.tasks),
-            'files_shared': len(self.files),
-            'code_executions': len(self.code_executions)
+            "room_id": self.room_id,
+            "topic": self.topic,
+            "created_at": self.created_at.isoformat(),
+            "total_members": len(self.members),
+            "active_members": len(active_members),
+            "channels": len(self.channels),
+            "total_messages": sum(len(ch.messages) for ch in self.channels.values()),
+            "total_decisions": len(self.decisions),
+            "approved_decisions": sum(1 for d in self.decisions if d.approved),
+            "vetoed_decisions": sum(1 for d in self.decisions if d.vetoed),
+            "total_tasks": len(self.tasks),
+            "files_shared": len(self.files),
+            "code_executions": len(self.code_executions),
         }
 
     def _extract_mentions(self, text: str) -> Set[str]:
         """Extract @mentions from text"""
         import re
+
         mentions = set()
-        for match in re.finditer(r'@(\w+)', text):
+        for match in re.finditer(r"@(\w+)", text):
             mentions.add(match.group(1))
         return mentions
 
@@ -809,7 +858,7 @@ class EnhancedCollaborationRoom:
             text=text,
             timestamp=datetime.now(timezone.utc),
             type="system",
-            channel=channel
+            channel=channel,
         )
         if channel in self.channels:
             self.channels[channel].add_message(message)
@@ -835,9 +884,14 @@ class EnhancedCollaborationRoom:
                     return msg
         return None
 
-    def send_critique(self, from_client: str, target_message_id: str,
-                     critique_text: str, severity: str = "suggestion",
-                     channel: str = "main") -> RoomMessage:
+    def send_critique(
+        self,
+        from_client: str,
+        target_message_id: str,
+        critique_text: str,
+        severity: str = "suggestion",
+        channel: str = "main",
+    ) -> RoomMessage:
         """
         Send structured critique of another message
 
@@ -865,7 +919,7 @@ class EnhancedCollaborationRoom:
             "blocking": "🚫",
             "major": "⚠️",
             "minor": "💡",
-            "suggestion": "💬"
+            "suggestion": "💬",
         }
 
         critique_msg = self.send_message(
@@ -874,7 +928,7 @@ class EnhancedCollaborationRoom:
             f"Severity: {severity.upper()}\n\n{critique_text}",
             msg_type="critique",
             reply_to=target_message_id,
-            channel=channel
+            channel=channel,
         )
 
         # Track critique
@@ -885,7 +939,7 @@ class EnhancedCollaborationRoom:
             critique_text=critique_text,
             severity=severity,
             timestamp=critique_msg.timestamp,
-            resolved=False
+            resolved=False,
         )
         self.critiques.append(critique)
 
@@ -894,9 +948,14 @@ class EnhancedCollaborationRoom:
 
         return critique_msg
 
-    def propose_alternative(self, from_client: str, original_decision_id: str,
-                           alternative_text: str, vote_type: VoteType = None,
-                           channel: str = "main") -> str:
+    def propose_alternative(
+        self,
+        from_client: str,
+        original_decision_id: str,
+        alternative_text: str,
+        vote_type: VoteType = None,
+        channel: str = "main",
+    ) -> str:
         """
         Propose alternative to existing decision
 
@@ -911,7 +970,9 @@ class EnhancedCollaborationRoom:
             Alternative decision ID
         """
         # Find original decision
-        original = next((d for d in self.decisions if d.id == original_decision_id), None)
+        original = next(
+            (d for d in self.decisions if d.id == original_decision_id), None
+        )
         if not original:
             raise ValueError(f"Decision {original_decision_id} not found")
 
@@ -927,7 +988,7 @@ class EnhancedCollaborationRoom:
             f"Alternative: {alternative_text}",
             msg_type="counter_proposal",
             reply_to=original_decision_id,
-            channel=channel
+            channel=channel,
         )
 
         # Create decision for alternative
@@ -937,7 +998,7 @@ class EnhancedCollaborationRoom:
             proposed_by=from_client,
             proposed_at=alt_msg.timestamp,
             vote_type=vote_type,
-            required_votes=original.required_votes
+            required_votes=original.required_votes,
         )
         self.decisions.append(alt_decision)
 
@@ -947,15 +1008,25 @@ class EnhancedCollaborationRoom:
         # Persist decision
         if self.persistence:
             self.persistence.save_decision(
-                alt_msg.id, self.room_id, alternative_text, from_client,
-                alt_msg.timestamp, vote_type.value, original.required_votes
+                alt_msg.id,
+                self.room_id,
+                alternative_text,
+                from_client,
+                alt_msg.timestamp,
+                vote_type.value,
+                original.required_votes,
             )
 
         return alt_msg.id
 
-    def add_debate_argument(self, from_client: str, decision_id: str,
-                           position: str, argument_text: str,
-                           evidence: List[str] = None) -> str:
+    def add_debate_argument(
+        self,
+        from_client: str,
+        decision_id: str,
+        position: str,
+        argument_text: str,
+        evidence: List[str] = None,
+    ) -> str:
         """
         Add pro/con argument to decision debate
 
@@ -983,7 +1054,7 @@ class EnhancedCollaborationRoom:
             from_client,
             f"{emoji} {position.upper()} argument:\n{argument_text}",
             msg_type="debate_argument",
-            reply_to=decision_id
+            reply_to=decision_id,
         )
 
         # Track argument
@@ -993,7 +1064,7 @@ class EnhancedCollaborationRoom:
             from_client=from_client,
             position=position,
             argument_text=argument_text,
-            supporting_evidence=evidence or []
+            supporting_evidence=evidence or [],
         )
         self.debate_arguments.append(arg)
 
@@ -1003,14 +1074,15 @@ class EnhancedCollaborationRoom:
         """Get pro/con summary for decision"""
         args = [a for a in self.debate_arguments if a.decision_id == decision_id]
         return {
-            'pro': [a for a in args if a.position == "pro"],
-            'con': [a for a in args if a.position == "con"],
-            'total_pro': len([a for a in args if a.position == "pro"]),
-            'total_con': len([a for a in args if a.position == "con"])
+            "pro": [a for a in args if a.position == "pro"],
+            "con": [a for a in args if a.position == "con"],
+            "total_pro": len([a for a in args if a.position == "pro"]),
+            "total_con": len([a for a in args if a.position == "con"]),
         }
 
-    def propose_amendment(self, from_client: str, decision_id: str,
-                         amendment_text: str) -> str:
+    def propose_amendment(
+        self, from_client: str, decision_id: str, amendment_text: str
+    ) -> str:
         """
         Propose amendment to existing decision
 
@@ -1031,17 +1103,19 @@ class EnhancedCollaborationRoom:
             from_client,
             f"📝 AMENDMENT to decision {decision_id[:8]}:\n{amendment_text}",
             msg_type="amendment",
-            reply_to=decision_id
+            reply_to=decision_id,
         )
 
         # Track amendment
-        decision.amendments.append({
-            'id': msg.id,
-            'from': from_client,
-            'text': amendment_text,
-            'accepted': False,
-            'timestamp': msg.timestamp.isoformat()
-        })
+        decision.amendments.append(
+            {
+                "id": msg.id,
+                "from": from_client,
+                "text": amendment_text,
+                "accepted": False,
+                "timestamp": msg.timestamp.isoformat(),
+            }
+        )
 
         return msg.id
 
@@ -1052,17 +1126,19 @@ class EnhancedCollaborationRoom:
             raise ValueError(f"Decision {decision_id} not found")
 
         # Find amendment
-        amendment = next((a for a in decision.amendments if a['id'] == amendment_id), None)
+        amendment = next(
+            (a for a in decision.amendments if a["id"] == amendment_id), None
+        )
         if not amendment:
             raise ValueError(f"Amendment {amendment_id} not found")
 
         # Update decision text
-        decision.text = amendment['text']
-        amendment['accepted'] = True
+        decision.text = amendment["text"]
+        amendment["accepted"] = True
 
         # Persist update
         if self.persistence:
-            self.persistence.update_decision_text(decision_id, amendment['text'])
+            self.persistence.update_decision_text(decision_id, amendment["text"])
 
         # Broadcast update
         self._broadcast_system_message(
@@ -1107,17 +1183,17 @@ class EnhancedCollaborationHub:
         """List all rooms"""
         return [
             {
-                'room_id': room.room_id,
-                'topic': room.topic,
-                'members': len([m for m in room.members.values() if m.active]),
-                'channels': len(room.channels),
-                'messages': sum(len(ch.messages) for ch in room.channels.values())
+                "room_id": room.room_id,
+                "topic": room.topic,
+                "members": len([m for m in room.members.values() if m.active]),
+                "channels": len(room.channels),
+                "messages": sum(len(ch.messages) for ch in room.channels.values()),
             }
             for room in self.rooms.values()
         ]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("🚀 Enhanced Collaboration Room - Feature Demo")
     print("=" * 80)
@@ -1155,7 +1231,7 @@ if __name__ == '__main__':
         "claude-desktop-1",
         "print('Hello from collaborative Python!')\nprint(2 + 2)",
         CodeLanguage.PYTHON,
-        channel=code_channel
+        channel=code_channel,
     )
 
     # Propose decision with consensus
@@ -1163,7 +1239,7 @@ if __name__ == '__main__':
     dec_id = room.propose_decision(
         "claude-code",
         "Use Python + FastAPI for the trading bot backend",
-        vote_type=VoteType.CONSENSUS
+        vote_type=VoteType.CONSENSUS,
     )
 
     # Vote

@@ -14,9 +14,9 @@ async def test_natural_disagreement():
     Test 1: Controversial decision - do agents naturally disagree?
     NO SCRIPTING - Each agent reasons independently
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🧪 TEST 1: NATURAL DISAGREEMENT - Controversial Technical Decision")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     agent1 = ThinkTankClient("claude-agent1", "coder")
@@ -27,8 +27,11 @@ async def test_natural_disagreement():
     try:
         # Connect
         await asyncio.gather(
-            coordinator.connect(), agent1.connect(), agent2.connect(),
-            agent3.connect(), agent4.connect()
+            coordinator.connect(),
+            agent1.connect(),
+            agent2.connect(),
+            agent3.connect(),
+            agent4.connect(),
         )
         print("✅ 5 Claude instances connected\n")
 
@@ -38,7 +41,7 @@ async def test_natural_disagreement():
             agent1.join_room(room_id),
             agent2.join_room(room_id),
             agent3.join_room(room_id),
-            agent4.join_room(room_id)
+            agent4.join_room(room_id),
         )
         await asyncio.sleep(0.5)
 
@@ -52,8 +55,10 @@ async def test_natural_disagreement():
         )
         print(f"   Coordinator: {proposal}\n")
 
-        decision = await coordinator.propose_decision(proposal, vote_type="simple_majority")
-        decision_id = decision['decision_id']
+        decision = await coordinator.propose_decision(
+            proposal, vote_type="simple_majority"
+        )
+        decision_id = decision["decision_id"]
         await asyncio.sleep(1)
 
         # Ask each agent to critique WITHOUT seeing others' opinions
@@ -68,7 +73,7 @@ async def test_natural_disagreement():
             "This is extremely risky. 18 months is a LONG time without shipping features. "
             "Competitors will eat our lunch. Python isn't the bottleneck - our architecture is. "
             "We can optimize Python first (Cython, PyPy, better algorithms) for 1/10th the cost.",
-            severity="blocking"
+            severity="blocking",
         )
         critiques.append(("Agent 1", "blocking", "AGAINST - too risky"))
         await asyncio.sleep(0.3)
@@ -80,7 +85,7 @@ async def test_natural_disagreement():
             "I agree Python has limitations, but full rewrite is dangerous. "
             "Better approach: incremental migration. Start with critical hot paths (5-10% of codebase), "
             "keep Python for business logic. Proven strategy at Dropbox, Instagram.",
-            severity="major"
+            severity="major",
         )
         critiques.append(("Agent 2", "major", "PARTIAL - incremental only"))
         await asyncio.sleep(0.3)
@@ -92,7 +97,7 @@ async def test_natural_disagreement():
             "I'm skeptical. Rust has huge benefits but $2M + 18 months is steep. "
             "Have we measured actual Python bottlenecks? Run profiling first. "
             "Maybe 90% of latency is database queries, not Python. Fix that first.",
-            severity="major"
+            severity="major",
         )
         critiques.append(("Agent 3", "major", "SKEPTICAL - need data"))
         await asyncio.sleep(0.3)
@@ -104,7 +109,7 @@ async def test_natural_disagreement():
             "Testing perspective: rewriting 500k LOC means re-testing EVERYTHING. "
             "High bug risk. User-facing features frozen for 18 months = customer churn. "
             "I'd only support if we have overwhelming proof Python is the bottleneck.",
-            severity="blocking"
+            severity="blocking",
         )
         critiques.append(("Agent 4", "blocking", "AGAINST - testing nightmare"))
         await asyncio.sleep(1)
@@ -128,9 +133,12 @@ async def test_natural_disagreement():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), agent1.close(), agent2.close(),
-            agent3.close(), agent4.close(),
-            return_exceptions=True
+            coordinator.close(),
+            agent1.close(),
+            agent2.close(),
+            agent3.close(),
+            agent4.close(),
+            return_exceptions=True,
         )
 
 
@@ -138,9 +146,9 @@ async def test_groupthink_vs_diversity():
     """
     Test 2: Do agents converge (groupthink) or maintain diverse opinions?
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🧪 TEST 2: GROUPTHINK vs DIVERSITY - Same Facts, Different Conclusions?")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     optimist = ThinkTankClient("claude-optimist", "coder")
@@ -150,8 +158,10 @@ async def test_groupthink_vs_diversity():
     try:
         # Connect
         await asyncio.gather(
-            coordinator.connect(), optimist.connect(),
-            pessimist.connect(), pragmatist.connect()
+            coordinator.connect(),
+            optimist.connect(),
+            pessimist.connect(),
+            pragmatist.connect(),
         )
         print("✅ 4 Claude instances connected (with different personas)\n")
 
@@ -159,7 +169,7 @@ async def test_groupthink_vs_diversity():
         await asyncio.gather(
             optimist.join_room(room_id),
             pessimist.join_room(room_id),
-            pragmatist.join_room(room_id)
+            pragmatist.join_room(room_id),
         )
         await asyncio.sleep(0.5)
 
@@ -172,8 +182,10 @@ async def test_groupthink_vs_diversity():
         )
         print(f"   {facts}\n")
 
-        decision = await coordinator.propose_decision(facts, vote_type="simple_majority")
-        decision_id = decision['decision_id']
+        decision = await coordinator.propose_decision(
+            facts, vote_type="simple_majority"
+        )
+        decision_id = decision["decision_id"]
         await asyncio.sleep(1)
 
         print("🤔 Each agent analyzes SAME facts with their role lens:\n")
@@ -181,36 +193,39 @@ async def test_groupthink_vs_diversity():
         # Optimist
         print("   💡 Optimist analyzing...")
         await optimist.add_debate_argument(
-            decision_id, "pro",
+            decision_id,
+            "pro",
             "This is a GREAT opportunity! Claude 4 is best-in-class. First mover advantage. "
             "Team is world-class. $18.5B seems fair given $7B raised and market leadership. "
-            "AI is the future - being early pays off massively."
+            "AI is the future - being early pays off massively.",
         )
         await asyncio.sleep(0.3)
 
         # Pessimist
         print("   ⚠️  Pessimist analyzing...")
         await pessimist.add_debate_argument(
-            decision_id, "con",
+            decision_id,
+            "con",
             "Too risky. $18.5B valuation is stretched given no profits. Heavy competition from "
             "OpenAI (backed by Microsoft) and Google (infinite resources). Regulatory crackdown "
-            "could tank valuations. High burn rate = potential down round. Pass."
+            "could tank valuations. High burn rate = potential down round. Pass.",
         )
         await asyncio.sleep(0.3)
 
         # Pragmatist
         print("   🎯 Pragmatist analyzing...")
         await pragmatist.add_debate_argument(
-            decision_id, "con",
+            decision_id,
+            "con",
             "Interesting but not at THIS price. Wait for next round when valuation resets. "
             "AI market is real but we're in a hype cycle. Better to invest at $10-12B after "
-            "some shakeout. Preserve dry powder for better entry point."
+            "some shakeout. Preserve dry powder for better entry point.",
         )
         await asyncio.sleep(1)
 
         # Get debate summary
         summary = await coordinator.get_debate_summary(decision_id)
-        debate = summary.get('debate', {})
+        debate = summary.get("debate", {})
 
         print("\n📊 OPINION DISTRIBUTION:\n")
         print(f"   👍 PRO (invest now): {debate.get('total_pro', 0)} agent")
@@ -226,9 +241,11 @@ async def test_groupthink_vs_diversity():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), optimist.close(),
-            pessimist.close(), pragmatist.close(),
-            return_exceptions=True
+            coordinator.close(),
+            optimist.close(),
+            pessimist.close(),
+            pragmatist.close(),
+            return_exceptions=True,
         )
 
 
@@ -236,9 +253,9 @@ async def test_devils_advocate():
     """
     Test 3: Can we assign a devil's advocate role?
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🧪 TEST 3: EXPLICIT DEVIL'S ADVOCATE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     supporter1 = ThinkTankClient("claude-supporter1", "coder")
@@ -247,8 +264,10 @@ async def test_devils_advocate():
 
     try:
         await asyncio.gather(
-            coordinator.connect(), supporter1.connect(),
-            supporter2.connect(), devils_advocate.connect()
+            coordinator.connect(),
+            supporter1.connect(),
+            supporter2.connect(),
+            devils_advocate.connect(),
         )
         print("✅ 4 Claude instances connected\n")
         print("   Roles:")
@@ -260,7 +279,7 @@ async def test_devils_advocate():
         await asyncio.gather(
             supporter1.join_room(room_id),
             supporter2.join_room(room_id),
-            devils_advocate.join_room(room_id)
+            devils_advocate.join_room(room_id),
         )
         await asyncio.sleep(0.5)
 
@@ -272,7 +291,7 @@ async def test_devils_advocate():
         print(f"   {proposal}\n")
 
         decision = await coordinator.propose_decision(proposal, vote_type="consensus")
-        decision_id = decision['decision_id']
+        decision_id = decision["decision_id"]
         await asyncio.sleep(0.5)
 
         print("💬 Team Discussion:\n")
@@ -280,15 +299,15 @@ async def test_devils_advocate():
         # Supporters
         print("   ✅ Supporter 1: 'Looks good, let's ship it!'")
         await supporter1.add_debate_argument(
-            decision_id, "pro",
-            "Feature is ready. QA passed. Stakeholders are excited. Let's ship!"
+            decision_id,
+            "pro",
+            "Feature is ready. QA passed. Stakeholders are excited. Let's ship!",
         )
         await asyncio.sleep(0.2)
 
         print("   ✅ Supporter 2: 'Tests all pass, I'm comfortable'")
         await supporter2.add_debate_argument(
-            decision_id, "pro",
-            "All tests green. Code review done. Good to go."
+            decision_id, "pro", "All tests green. Code review done. Good to go."
         )
         await asyncio.sleep(0.5)
 
@@ -302,7 +321,7 @@ async def test_devils_advocate():
             "3. 'QA passed' ≠ production-ready. Did we load test? Rollback plan?\n"
             "4. Stakeholder pressure ≠ technical readiness.\n\n"
             "RECOMMENDATION: Deploy Tuesday 10am with full team available.",
-            severity="blocking"
+            severity="blocking",
         )
         await asyncio.sleep(1)
 
@@ -315,9 +334,11 @@ async def test_devils_advocate():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), supporter1.close(),
-            supporter2.close(), devils_advocate.close(),
-            return_exceptions=True
+            coordinator.close(),
+            supporter1.close(),
+            supporter2.close(),
+            devils_advocate.close(),
+            return_exceptions=True,
         )
 
 
@@ -325,28 +346,28 @@ async def test_disagreement_statistics():
     """
     Test 4: Statistical analysis - how often do opinions differ?
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🧪 TEST 4: DISAGREEMENT STATISTICS - Multiple Scenarios")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     results = []
 
     scenarios = [
         {
-            'name': 'Easy consensus',
-            'proposal': 'Add unit tests to improve code quality',
-            'expected': 'high_agreement'
+            "name": "Easy consensus",
+            "proposal": "Add unit tests to improve code quality",
+            "expected": "high_agreement",
         },
         {
-            'name': 'Moderate debate',
-            'proposal': 'Switch from MySQL to PostgreSQL',
-            'expected': 'some_disagreement'
+            "name": "Moderate debate",
+            "proposal": "Switch from MySQL to PostgreSQL",
+            "expected": "some_disagreement",
         },
         {
-            'name': 'High controversy',
-            'proposal': 'Mandatory return-to-office 5 days/week',
-            'expected': 'high_disagreement'
-        }
+            "name": "High controversy",
+            "proposal": "Mandatory return-to-office 5 days/week",
+            "expected": "high_disagreement",
+        },
     ]
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
@@ -356,8 +377,7 @@ async def test_disagreement_statistics():
 
     try:
         await asyncio.gather(
-            coordinator.connect(), agent1.connect(),
-            agent2.connect(), agent3.connect()
+            coordinator.connect(), agent1.connect(), agent2.connect(), agent3.connect()
         )
 
         for i, scenario in enumerate(scenarios, 1):
@@ -368,21 +388,20 @@ async def test_disagreement_statistics():
             await asyncio.gather(
                 agent1.join_room(room_id),
                 agent2.join_room(room_id),
-                agent3.join_room(room_id)
+                agent3.join_room(room_id),
             )
 
             decision = await coordinator.propose_decision(
-                scenario['proposal'],
-                vote_type="simple_majority"
+                scenario["proposal"], vote_type="simple_majority"
             )
-            decision_id = decision['decision_id']
+            decision_id = decision["decision_id"]
             await asyncio.sleep(0.5)
 
             # Vote
             await asyncio.gather(
                 agent1.vote(decision_id, approve=True),
                 agent2.vote(decision_id, approve=True),
-                agent3.vote(decision_id, approve=True)
+                agent3.vote(decision_id, approve=True),
             )
 
             # Simple simulation - in real test, agents would reason independently
@@ -401,21 +420,23 @@ async def test_disagreement_statistics():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), agent1.close(),
-            agent2.close(), agent3.close(),
-            return_exceptions=True
+            coordinator.close(),
+            agent1.close(),
+            agent2.close(),
+            agent3.close(),
+            return_exceptions=True,
         )
 
 
 async def main():
     """Run all disagreement tests"""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🔬 CLAUDE DISAGREEMENT & DEVIL'S ADVOCATE ANALYSIS")
-    print("="*80)
+    print("=" * 80)
     print("\nResearch Question:")
     print("  Do Claude instances naturally disagree, or converge to groupthink?")
     print("  Can we get devil's advocate behavior?")
-    print("="*80)
+    print("=" * 80)
 
     await test_natural_disagreement()
     await asyncio.sleep(2)
@@ -429,9 +450,9 @@ async def main():
     await test_disagreement_statistics()
 
     # Final analysis
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 FINAL ANALYSIS")
-    print("="*80)
+    print("=" * 80)
     print("\n🔍 KEY FINDINGS:\n")
     print("1. NATURAL DISAGREEMENT:")
     print("   ✅ Claude instances DO disagree naturally")
@@ -460,10 +481,10 @@ async def main():
     print("   4. Controversial decisions should REQUIRE critique phase")
     print("   5. Track dissent rate - too low = groupthink warning")
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

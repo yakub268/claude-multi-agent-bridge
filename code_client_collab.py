@@ -29,20 +29,20 @@ class CodeClientCollab(CodeClientWS):
     - Channel management
     """
 
-    def __init__(self, client_id: str, server_url: str = 'ws://localhost:5001'):
+    def __init__(self, client_id: str, server_url: str = "ws://localhost:5001"):
         super().__init__(client_id, server_url)
         self.current_room: Optional[str] = None
         self.room_handlers: Dict[str, List[Callable]] = {}
         self.collab_responses: Dict[str, any] = {}  # response_id -> response
-        self.collab_lock = __import__('threading').Lock()
+        self.collab_lock = __import__("threading").Lock()
 
         # Register handler for collab responses
-        self.on('collab_response', self._handle_collab_response)
+        self.on("collab_response", self._handle_collab_response)
 
     def _handle_collab_response(self, msg: Dict):
         """Handle collab response message"""
-        response = msg.get('payload', {}).get('response', {})
-        response_id = msg.get('id', 'default')
+        response = msg.get("payload", {}).get("response", {})
+        response_id = msg.get("id", "default")
 
         with self.collab_lock:
             self.collab_responses[response_id] = response
@@ -62,19 +62,19 @@ class CodeClientCollab(CodeClientWS):
         Returns:
             Room ID
         """
-        response = self._send_collab({
-            'action': 'create_room',
-            'topic': topic,
-            'role': role
-        })
+        response = self._send_collab(
+            {"action": "create_room", "topic": topic, "role": role}
+        )
 
-        if response['status'] == 'success':
-            self.current_room = response['room_id']
-            return response['room_id']
+        if response["status"] == "success":
+            self.current_room = response["room_id"]
+            return response["room_id"]
         else:
-            raise Exception(response.get('error', 'Failed to create room'))
+            raise Exception(response.get("error", "Failed to create room"))
 
-    def join_room(self, room_id: str, role: str = "participant", vote_weight: float = 1.0):
+    def join_room(
+        self, room_id: str, role: str = "participant", vote_weight: float = 1.0
+    ):
         """
         Join existing collaboration room
 
@@ -86,18 +86,20 @@ class CodeClientCollab(CodeClientWS):
         Returns:
             Success status
         """
-        response = self._send_collab({
-            'action': 'join_room',
-            'room_id': room_id,
-            'role': role,
-            'vote_weight': vote_weight
-        })
+        response = self._send_collab(
+            {
+                "action": "join_room",
+                "room_id": room_id,
+                "role": role,
+                "vote_weight": vote_weight,
+            }
+        )
 
-        if response['status'] == 'success':
+        if response["status"] == "success":
             self.current_room = room_id
             return True
         else:
-            raise Exception(response.get('error', 'Failed to join room'))
+            raise Exception(response.get("error", "Failed to join room"))
 
     def leave_room(self, room_id: Optional[str] = None):
         """Leave collaboration room"""
@@ -105,22 +107,17 @@ class CodeClientCollab(CodeClientWS):
         if not room_id:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'leave_room',
-            'room_id': room_id
-        })
+        response = self._send_collab({"action": "leave_room", "room_id": room_id})
 
         if room_id == self.current_room:
             self.current_room = None
 
     def list_rooms(self) -> List[Dict]:
         """List all collaboration rooms"""
-        response = self._send_collab({
-            'action': 'list_rooms'
-        })
+        response = self._send_collab({"action": "list_rooms"})
 
-        if response['status'] == 'success':
-            return response['rooms']
+        if response["status"] == "success":
+            return response["rooms"]
         else:
             return []
 
@@ -130,21 +127,20 @@ class CodeClientCollab(CodeClientWS):
         if not room_id:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'get_summary',
-            'room_id': room_id
-        })
+        response = self._send_collab({"action": "get_summary", "room_id": room_id})
 
-        if response['status'] == 'success':
-            return response['summary']
+        if response["status"] == "success":
+            return response["summary"]
         else:
-            raise Exception(response.get('error', 'Failed to get summary'))
+            raise Exception(response.get("error", "Failed to get summary"))
 
     # ========================================================================
     # Messaging
     # ========================================================================
 
-    def send_to_room(self, text: str, channel: str = "main", reply_to: Optional[str] = None):
+    def send_to_room(
+        self, text: str, channel: str = "main", reply_to: Optional[str] = None
+    ):
         """
         Send message to room
 
@@ -156,31 +152,35 @@ class CodeClientCollab(CodeClientWS):
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'send_message',
-            'room_id': self.current_room,
-            'text': text,
-            'channel': channel,
-            'reply_to': reply_to
-        })
+        response = self._send_collab(
+            {
+                "action": "send_message",
+                "room_id": self.current_room,
+                "text": text,
+                "channel": channel,
+                "reply_to": reply_to,
+            }
+        )
 
-        if response['status'] != 'success':
-            raise Exception(response.get('error', 'Failed to send message'))
+        if response["status"] != "success":
+            raise Exception(response.get("error", "Failed to send message"))
 
     def get_messages(self, channel: str = "main", limit: int = 100) -> List[Dict]:
         """Get room messages"""
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'get_messages',
-            'room_id': self.current_room,
-            'channel': channel,
-            'limit': limit
-        })
+        response = self._send_collab(
+            {
+                "action": "get_messages",
+                "room_id": self.current_room,
+                "channel": channel,
+                "limit": limit,
+            }
+        )
 
-        if response['status'] == 'success':
-            return response['messages']
+        if response["status"] == "success":
+            return response["messages"]
         else:
             return []
 
@@ -193,17 +193,19 @@ class CodeClientCollab(CodeClientWS):
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'create_channel',
-            'room_id': self.current_room,
-            'name': name,
-            'topic': topic
-        })
+        response = self._send_collab(
+            {
+                "action": "create_channel",
+                "room_id": self.current_room,
+                "name": name,
+                "topic": topic,
+            }
+        )
 
-        if response['status'] == 'success':
-            return response['channel_id']
+        if response["status"] == "success":
+            return response["channel_id"]
         else:
-            raise Exception(response.get('error', 'Failed to create channel'))
+            raise Exception(response.get("error", "Failed to create channel"))
 
     # ========================================================================
     # File Sharing
@@ -224,46 +226,51 @@ class CodeClientCollab(CodeClientWS):
             raise Exception("Not in a room")
 
         # Read file
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             file_content = f.read()
 
         # Encode to base64
-        file_content_base64 = base64.b64encode(file_content).decode('utf-8')
+        file_content_base64 = base64.b64encode(file_content).decode("utf-8")
 
         # Get file name
         import os
+
         file_name = os.path.basename(file_path)
 
         # Detect content type
-        content_type = 'application/octet-stream'
-        if file_name.endswith('.py'):
-            content_type = 'text/x-python'
-        elif file_name.endswith('.js'):
-            content_type = 'text/javascript'
-        elif file_name.endswith('.md'):
-            content_type = 'text/markdown'
-        elif file_name.endswith('.json'):
-            content_type = 'application/json'
+        content_type = "application/octet-stream"
+        if file_name.endswith(".py"):
+            content_type = "text/x-python"
+        elif file_name.endswith(".js"):
+            content_type = "text/javascript"
+        elif file_name.endswith(".md"):
+            content_type = "text/markdown"
+        elif file_name.endswith(".json"):
+            content_type = "application/json"
 
-        response = self._send_collab({
-            'action': 'upload_file',
-            'room_id': self.current_room,
-            'file_name': file_name,
-            'file_content': file_content_base64,
-            'content_type': content_type,
-            'channel': channel
-        })
+        response = self._send_collab(
+            {
+                "action": "upload_file",
+                "room_id": self.current_room,
+                "file_name": file_name,
+                "file_content": file_content_base64,
+                "content_type": content_type,
+                "channel": channel,
+            }
+        )
 
-        if response['status'] == 'success':
-            return response['file_id']
+        if response["status"] == "success":
+            return response["file_id"]
         else:
-            raise Exception(response.get('error', 'Failed to upload file'))
+            raise Exception(response.get("error", "Failed to upload file"))
 
     # ========================================================================
     # Code Execution
     # ========================================================================
 
-    def execute_code(self, code: str, language: str = "python", channel: str = "main") -> Dict:
+    def execute_code(
+        self, code: str, language: str = "python", channel: str = "main"
+    ) -> Dict:
         """
         Execute code in sandbox
 
@@ -278,31 +285,37 @@ class CodeClientCollab(CodeClientWS):
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'execute_code',
-            'room_id': self.current_room,
-            'code': code,
-            'language': language,
-            'channel': channel
-        })
+        response = self._send_collab(
+            {
+                "action": "execute_code",
+                "room_id": self.current_room,
+                "code": code,
+                "language": language,
+                "channel": channel,
+            }
+        )
 
-        if response['status'] == 'success':
+        if response["status"] == "success":
             return {
-                'execution_id': response['execution_id'],
-                'output': response['output'],
-                'error': response['error'],
-                'exit_code': response['exit_code'],
-                'execution_time_ms': response['execution_time_ms']
+                "execution_id": response["execution_id"],
+                "output": response["output"],
+                "error": response["error"],
+                "exit_code": response["exit_code"],
+                "execution_time_ms": response["execution_time_ms"],
             }
         else:
-            raise Exception(response.get('error', 'Failed to execute code'))
+            raise Exception(response.get("error", "Failed to execute code"))
 
     # ========================================================================
     # Voting & Decisions
     # ========================================================================
 
-    def propose_decision(self, text: str, vote_type: str = "simple_majority",
-                        required_votes: Optional[int] = None) -> str:
+    def propose_decision(
+        self,
+        text: str,
+        vote_type: str = "simple_majority",
+        required_votes: Optional[int] = None,
+    ) -> str:
         """
         Propose decision
 
@@ -317,18 +330,20 @@ class CodeClientCollab(CodeClientWS):
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'propose_decision',
-            'room_id': self.current_room,
-            'text': text,
-            'vote_type': vote_type,
-            'required_votes': required_votes
-        })
+        response = self._send_collab(
+            {
+                "action": "propose_decision",
+                "room_id": self.current_room,
+                "text": text,
+                "vote_type": vote_type,
+                "required_votes": required_votes,
+            }
+        )
 
-        if response['status'] == 'success':
-            return response['decision_id']
+        if response["status"] == "success":
+            return response["decision_id"]
         else:
-            raise Exception(response.get('error', 'Failed to propose decision'))
+            raise Exception(response.get("error", "Failed to propose decision"))
 
     def vote(self, decision_id: str, approve: bool = True, veto: bool = False):
         """
@@ -342,16 +357,18 @@ class CodeClientCollab(CodeClientWS):
         if not self.current_room:
             raise Exception("Not in a room")
 
-        response = self._send_collab({
-            'action': 'vote',
-            'room_id': self.current_room,
-            'decision_id': decision_id,
-            'approve': approve,
-            'veto': veto
-        })
+        response = self._send_collab(
+            {
+                "action": "vote",
+                "room_id": self.current_room,
+                "decision_id": decision_id,
+                "approve": approve,
+                "veto": veto,
+            }
+        )
 
-        if response['status'] != 'success':
-            raise Exception(response.get('error', 'Failed to vote'))
+        if response["status"] != "success":
+            raise Exception(response.get("error", "Failed to vote"))
 
     # ========================================================================
     # Internal
@@ -365,11 +382,7 @@ class CodeClientCollab(CodeClientWS):
         # Generate unique ID for this request
         request_id = str(uuid.uuid4())
 
-        message = {
-            'type': 'collab',
-            'request_id': request_id,
-            **payload
-        }
+        message = {"type": "collab", "request_id": request_id, **payload}
 
         # Send via WebSocket
         if not self.connected:
@@ -400,7 +413,7 @@ class CodeClientCollab(CodeClientWS):
 
 
 # Example usage
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("🤝 Enhanced Client with Collaboration Support")
     print("=" * 80)
@@ -420,7 +433,8 @@ if __name__ == '__main__':
     print("   - list_rooms()")
 
     print("\n📝 Example:")
-    print("""
+    print(
+        """
     # Create room
     room_id = client.create_room("Build Trading Bot", role="coordinator")
 
@@ -439,6 +453,7 @@ if __name__ == '__main__':
 
     # Vote
     client.vote(dec_id, approve=True)
-    """)
+    """
+    )
 
     print("\n✅ Client ready for collaboration!")

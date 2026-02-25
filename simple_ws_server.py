@@ -13,8 +13,7 @@ from datetime import datetime, timezone
 from collab_ws_integration import CollabWSBridge
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -38,29 +37,23 @@ async def handle_client(websocket, path):
                 data = json.loads(message)
 
                 # Handle collaboration actions
-                if data.get('type') == 'collab':
+                if data.get("type") == "collab":
                     response = collab_bridge.handle_collab_message(
-                        websocket,
-                        data.get('from', client_id),
-                        data
+                        websocket, data.get("from", client_id), data
                     )
                 else:
-                    response = {'status': 'error', 'error': 'Unknown message type'}
+                    response = {"status": "error", "error": "Unknown message type"}
 
                 # Send response
                 await websocket.send(json.dumps(response))
 
             except json.JSONDecodeError:
-                await websocket.send(json.dumps({
-                    'status': 'error',
-                    'error': 'Invalid JSON'
-                }))
+                await websocket.send(
+                    json.dumps({"status": "error", "error": "Invalid JSON"})
+                )
             except Exception as e:
                 logger.error(f"Message error: {e}")
-                await websocket.send(json.dumps({
-                    'status': 'error',
-                    'error': str(e)
-                }))
+                await websocket.send(json.dumps({"status": "error", "error": str(e)}))
 
     except websockets.exceptions.ConnectionClosed:
         logger.info(f"Client disconnected: {client_id}")
@@ -74,25 +67,21 @@ async def handle_client(websocket, path):
 async def main():
     """Start WebSocket server"""
     server = await websockets.serve(
-        handle_client,
-        "localhost",
-        5001,
-        ping_interval=30,
-        ping_timeout=10
+        handle_client, "localhost", 5001, ping_interval=30, ping_timeout=10
     )
 
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info("🚀 WebSocket Think-Tank Server Running")
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info("   URL: ws://localhost:5001")
     logger.info("   Features: Critique, Debate, Amendments, Alternatives")
     logger.info("   Press Ctrl+C to stop")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
     await asyncio.Future()  # Run forever
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

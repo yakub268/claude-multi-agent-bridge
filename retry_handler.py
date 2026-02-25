@@ -12,8 +12,9 @@ from enum import Enum
 
 class CircuitState(Enum):
     """Circuit breaker states"""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, reject requests
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing recovery
 
 
@@ -27,9 +28,12 @@ class CircuitBreaker:
     - Testing recovery in half-open state
     """
 
-    def __init__(self, failure_threshold: int = 5,
-                 recovery_timeout: float = 60.0,
-                 success_threshold: int = 2):
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0,
+        success_threshold: int = 2,
+    ):
         """
         Initialize circuit breaker
 
@@ -98,7 +102,9 @@ class CircuitBreaker:
         """Open the circuit"""
         self.state = CircuitState.OPEN
         self.success_count = 0
-        self.logger.warning(f"Circuit breaker OPENED after {self.failure_count} failures")
+        self.logger.warning(
+            f"Circuit breaker OPENED after {self.failure_count} failures"
+        )
 
     def _close_circuit(self):
         """Close the circuit"""
@@ -124,14 +130,17 @@ class CircuitBreaker:
 
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is open"""
+
     pass
 
 
-def retry_with_backoff(max_retries: int = 3,
-                       base_delay: float = 1.0,
-                       max_delay: float = 60.0,
-                       exponential_base: float = 2.0,
-                       jitter: bool = True):
+def retry_with_backoff(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    exponential_base: float = 2.0,
+    jitter: bool = True,
+):
     """
     Decorator for retry with exponential backoff
 
@@ -148,6 +157,7 @@ def retry_with_backoff(max_retries: int = 3,
             # might fail randomly
             pass
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -165,11 +175,12 @@ def retry_with_backoff(max_retries: int = 3,
                         raise e
 
                     # Calculate backoff
-                    delay = min(base_delay * (exponential_base ** attempt), max_delay)
+                    delay = min(base_delay * (exponential_base**attempt), max_delay)
 
                     # Add jitter (±25%)
                     if jitter:
                         import random
+
                         jitter_range = delay * 0.25
                         delay += random.uniform(-jitter_range, jitter_range)
 
@@ -184,6 +195,7 @@ def retry_with_backoff(max_retries: int = 3,
             raise last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -199,17 +211,21 @@ def with_circuit_breaker(circuit_breaker: CircuitBreaker):
             # external API call
             pass
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return circuit_breaker.call(func, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 # ============================================================================
 # Combined Retry + Circuit Breaker
 # ============================================================================
+
 
 class ResilientCaller:
     """
@@ -218,11 +234,13 @@ class ResilientCaller:
     Use this for external API calls, database connections, etc.
     """
 
-    def __init__(self,
-                 max_retries: int = 3,
-                 base_delay: float = 1.0,
-                 failure_threshold: int = 5,
-                 recovery_timeout: float = 60.0):
+    def __init__(
+        self,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0,
+    ):
         """
         Initialize resilient caller
 
@@ -235,8 +253,7 @@ class ResilientCaller:
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.circuit_breaker = CircuitBreaker(
-            failure_threshold=failure_threshold,
-            recovery_timeout=recovery_timeout
+            failure_threshold=failure_threshold, recovery_timeout=recovery_timeout
         )
 
     def call(self, func: Callable, *args, **kwargs):
@@ -250,10 +267,8 @@ class ResilientCaller:
             CircuitOpenError: If circuit is open
             Exception: If all retries failed
         """
-        @retry_with_backoff(
-            max_retries=self.max_retries,
-            base_delay=self.base_delay
-        )
+
+        @retry_with_backoff(max_retries=self.max_retries, base_delay=self.base_delay)
         def wrapped():
             return self.circuit_breaker.call(func, *args, **kwargs)
 
@@ -264,12 +279,12 @@ class ResilientCaller:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    print("="*70)
+    print("=" * 70)
     print("🧪 Retry + Circuit Breaker Test")
-    print("="*70)
+    print("=" * 70)
 
     # Simulated unreliable function
     call_count = 0

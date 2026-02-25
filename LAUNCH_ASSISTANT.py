@@ -14,12 +14,13 @@ Interactive mode - Browser Claude helps you with each step.
 from code_client import CodeClient
 import time
 
+
 class LaunchAssistant:
     def __init__(self):
         self.client = CodeClient()
-        print("="*70)
+        print("=" * 70)
         print("🚀 CLAUDE MULTI-AGENT BRIDGE - LAUNCH ASSISTANT")
-        print("="*70)
+        print("=" * 70)
         print("\n💡 Using our own tool to launch itself!")
         print("   Browser Claude will help optimize each post.\n")
 
@@ -28,10 +29,7 @@ class LaunchAssistant:
         print("\n📤 Asking Browser Claude...")
         print(f"   {prompt[:80]}...")
 
-        self.client.send('browser', 'command', {
-            'action': 'run_prompt',
-            'text': prompt
-        })
+        self.client.send("browser", "command", {"action": "run_prompt", "text": prompt})
 
         print("⏳ Waiting for response...")
 
@@ -40,8 +38,8 @@ class LaunchAssistant:
             messages = self.client.poll()
 
             for msg in messages:
-                if msg.get('type') == 'claude_response':
-                    response = msg['payload']['response']
+                if msg.get("type") == "claude_response":
+                    response = msg["payload"]["response"]
                     print("✅ Got response!\n")
                     return response
 
@@ -52,9 +50,9 @@ class LaunchAssistant:
 
     def optimize_tweet_thread(self):
         """Get Browser Claude to optimize our Twitter thread"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🐦 STEP 1: OPTIMIZE TWITTER THREAD")
-        print("="*70)
+        print("=" * 70)
 
         original_thread = """Tweet 1: I just built something wild 🧵
 
@@ -100,11 +98,11 @@ Repository: github.com/yakub268/claude-multi-agent-bridge"""
         response = self.ask_browser_claude(prompt, wait_time=20)
 
         if response:
-            print("="*70)
+            print("=" * 70)
             print("OPTIMIZED THREAD:")
-            print("="*70)
+            print("=" * 70)
             print(response)
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("✅ Copy this optimized version and post to Twitter!")
             print("   Don't forget to tag @AnthropicAI")
         else:
@@ -112,9 +110,9 @@ Repository: github.com/yakub268/claude-multi-agent-bridge"""
 
     def optimize_reddit_post(self):
         """Get Browser Claude to optimize Reddit post"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📱 STEP 2: OPTIMIZE REDDIT POST")
-        print("="*70)
+        print("=" * 70)
 
         prompt = """I'm posting to r/ClaudeAI about my project: Claude Multi-Agent Bridge
 
@@ -138,20 +136,20 @@ Key points to cover:
         response = self.ask_browser_claude(prompt, wait_time=20)
 
         if response:
-            print("="*70)
+            print("=" * 70)
             print("OPTIMIZED REDDIT POST:")
-            print("="*70)
+            print("=" * 70)
             print(response)
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("✅ Copy this and post to r/ClaudeAI")
         else:
             print("❌ Timeout - use original version from LAUNCH.md")
 
     def get_hn_advice(self):
         """Get Browser Claude's advice for Hacker News"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🟠 STEP 3: HACKER NEWS STRATEGY")
-        print("="*70)
+        print("=" * 70)
 
         prompt = """I'm submitting to Hacker News:
 
@@ -176,20 +174,20 @@ Technical details:
         response = self.ask_browser_claude(prompt, wait_time=20)
 
         if response:
-            print("="*70)
+            print("=" * 70)
             print("HACKER NEWS STRATEGY:")
-            print("="*70)
+            print("=" * 70)
             print(response)
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("✅ Follow this advice when posting to HN")
         else:
             print("❌ Timeout - use original version from LAUNCH.md")
 
     def get_viral_advice(self):
         """Get Browser Claude's advice on going viral"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🔥 STEP 4: VIRAL STRATEGY")
-        print("="*70)
+        print("=" * 70)
 
         prompt = """I just launched an open source project that enables Claude AI instances to communicate with each other:
 
@@ -214,14 +212,15 @@ The project is genuinely useful - I use it myself. But I want the community to d
         response = self.ask_browser_claude(prompt, wait_time=20)
 
         if response:
-            print("="*70)
+            print("=" * 70)
             print("VIRAL STRATEGY:")
-            print("="*70)
+            print("=" * 70)
             print(response)
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("✅ Execute these additional tactics")
         else:
             print("❌ Timeout")
+
 
 def main():
     assistant = LaunchAssistant()
@@ -243,9 +242,9 @@ def main():
 
     assistant.get_viral_advice()
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎉 LAUNCH OPTIMIZATION COMPLETE!")
-    print("="*70)
+    print("=" * 70)
     print("\nYou now have optimized versions of:")
     print("  ✅ Twitter thread")
     print("  ✅ Reddit post")
@@ -254,5 +253,6 @@ def main():
     print("\n📋 All optimized by Browser Claude using our own tool!")
     print("\n🚀 Now go post them and watch the stars roll in!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

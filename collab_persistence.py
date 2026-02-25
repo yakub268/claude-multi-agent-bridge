@@ -41,20 +41,23 @@ class CollabPersistence:
         conn = sqlite3.connect(self.db_path)
 
         # Rooms table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS rooms (
                 room_id TEXT PRIMARY KEY,
                 topic TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 active INTEGER DEFAULT 1
             )
-        """)
+        """
+        )
 
         # Create index for rooms
         conn.execute("CREATE INDEX IF NOT EXISTS idx_active ON rooms(active)")
 
         # Members table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS members (
                 room_id TEXT NOT NULL,
                 client_id TEXT NOT NULL,
@@ -67,10 +70,12 @@ class CollabPersistence:
                 PRIMARY KEY (room_id, client_id),
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Messages table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 room_id TEXT NOT NULL,
@@ -83,14 +88,20 @@ class CollabPersistence:
 
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Create indexes for messages
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_room_time ON messages(room_id, timestamp)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_channel ON messages(room_id, channel)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_room_time ON messages(room_id, timestamp)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_channel ON messages(room_id, channel)"
+        )
 
         # Decisions table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS decisions (
                 id TEXT PRIMARY KEY,
                 room_id TEXT NOT NULL,
@@ -104,10 +115,12 @@ class CollabPersistence:
 
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Votes table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS votes (
                 decision_id TEXT NOT NULL,
                 voter TEXT NOT NULL,
@@ -118,10 +131,12 @@ class CollabPersistence:
                 PRIMARY KEY (decision_id, voter),
                 FOREIGN KEY (decision_id) REFERENCES decisions(id)
             )
-        """)
+        """
+        )
 
         # Tasks table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 room_id TEXT NOT NULL,
@@ -134,10 +149,12 @@ class CollabPersistence:
 
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Files table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS files (
                 id TEXT PRIMARY KEY,
                 room_id TEXT NOT NULL,
@@ -151,10 +168,12 @@ class CollabPersistence:
 
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Code executions table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_executions (
                 id TEXT PRIMARY KEY,
                 room_id TEXT NOT NULL,
@@ -169,10 +188,12 @@ class CollabPersistence:
 
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         # Channels table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS channels (
                 channel_id TEXT NOT NULL,
                 room_id TEXT NOT NULL,
@@ -183,7 +204,8 @@ class CollabPersistence:
                 PRIMARY KEY (room_id, channel_id),
                 FOREIGN KEY (room_id) REFERENCES rooms(room_id)
             )
-        """)
+        """
+        )
 
         conn.commit()
         conn.close()
@@ -195,10 +217,13 @@ class CollabPersistence:
     def save_room(self, room_id: str, topic: str, created_at: datetime):
         """Save or update room"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO rooms (room_id, topic, created_at, active)
             VALUES (?, ?, ?, 1)
-        """, (room_id, topic, created_at.isoformat()))
+        """,
+            (room_id, topic, created_at.isoformat()),
+        )
         conn.commit()
         conn.close()
 
@@ -206,10 +231,7 @@ class CollabPersistence:
         """Get room by ID"""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute(
-            "SELECT * FROM rooms WHERE room_id = ?",
-            (room_id,)
-        )
+        cursor = conn.execute("SELECT * FROM rooms WHERE room_id = ?", (room_id,))
         row = cursor.fetchone()
         conn.close()
 
@@ -237,15 +259,24 @@ class CollabPersistence:
     # Member Operations
     # ========================================================================
 
-    def save_member(self, room_id: str, client_id: str, role: str,
-                   joined_at: datetime, vote_weight: float = 1.0):
+    def save_member(
+        self,
+        room_id: str,
+        client_id: str,
+        role: str,
+        joined_at: datetime,
+        vote_weight: float = 1.0,
+    ):
         """Save or update member"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO members
             (room_id, client_id, role, joined_at, active, vote_weight)
             VALUES (?, ?, ?, ?, 1, ?)
-        """, (room_id, client_id, role, joined_at.isoformat(), vote_weight))
+        """,
+            (room_id, client_id, role, joined_at.isoformat(), vote_weight),
+        )
         conn.commit()
         conn.close()
 
@@ -270,22 +301,46 @@ class CollabPersistence:
     # Message Operations
     # ========================================================================
 
-    def save_message(self, message_id: str, room_id: str, from_client: str,
-                    text: str, timestamp: datetime, msg_type: str = "message",
-                    channel: str = "main", reply_to: Optional[str] = None):
+    def save_message(
+        self,
+        message_id: str,
+        room_id: str,
+        from_client: str,
+        text: str,
+        timestamp: datetime,
+        msg_type: str = "message",
+        channel: str = "main",
+        reply_to: Optional[str] = None,
+    ):
         """Save message"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO messages
             (id, room_id, from_client, text, timestamp, type, channel, reply_to)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (message_id, room_id, from_client, text, timestamp.isoformat(),
-              msg_type, channel, reply_to))
+        """,
+            (
+                message_id,
+                room_id,
+                from_client,
+                text,
+                timestamp.isoformat(),
+                msg_type,
+                channel,
+                reply_to,
+            ),
+        )
         conn.commit()
         conn.close()
 
-    def get_messages(self, room_id: str, channel: Optional[str] = None,
-                    since: Optional[str] = None, limit: int = 100) -> List[Dict]:
+    def get_messages(
+        self,
+        room_id: str,
+        channel: Optional[str] = None,
+        since: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict]:
         """Get room messages"""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -316,53 +371,86 @@ class CollabPersistence:
     # Decision & Vote Operations
     # ========================================================================
 
-    def save_decision(self, decision_id: str, room_id: str, text: str,
-                     proposed_by: str, proposed_at: datetime,
-                     vote_type: str, required_votes: int):
+    def save_decision(
+        self,
+        decision_id: str,
+        room_id: str,
+        text: str,
+        proposed_by: str,
+        proposed_at: datetime,
+        vote_type: str,
+        required_votes: int,
+    ):
         """Save decision"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO decisions
             (id, room_id, text, proposed_by, proposed_at, vote_type, required_votes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (decision_id, room_id, text, proposed_by, proposed_at.isoformat(),
-              vote_type, required_votes))
+        """,
+            (
+                decision_id,
+                room_id,
+                text,
+                proposed_by,
+                proposed_at.isoformat(),
+                vote_type,
+                required_votes,
+            ),
+        )
         conn.commit()
         conn.close()
 
-    def save_vote(self, decision_id: str, voter: str, approve: bool = True,
-                 veto: bool = False):
+    def save_vote(
+        self, decision_id: str, voter: str, approve: bool = True, veto: bool = False
+    ):
         """Save vote"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO votes
             (decision_id, voter, approve, veto, voted_at)
             VALUES (?, ?, ?, ?, ?)
-        """, (decision_id, voter, 1 if approve else 0, 1 if veto else 0,
-              datetime.now(timezone.utc).isoformat()))
+        """,
+            (
+                decision_id,
+                voter,
+                1 if approve else 0,
+                1 if veto else 0,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
         conn.commit()
         conn.close()
 
-    def update_decision_status(self, decision_id: str, approved: bool = False,
-                              vetoed: bool = False):
+    def update_decision_status(
+        self, decision_id: str, approved: bool = False, vetoed: bool = False
+    ):
         """Update decision approval/veto status"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE decisions
             SET approved = ?, vetoed = ?
             WHERE id = ?
-        """, (1 if approved else 0, 1 if vetoed else 0, decision_id))
+        """,
+            (1 if approved else 0, 1 if vetoed else 0, decision_id),
+        )
         conn.commit()
         conn.close()
 
     def update_decision_text(self, decision_id: str, new_text: str):
         """Update decision text (for amendments)"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE decisions
             SET text = ?
             WHERE id = ?
-        """, (new_text, decision_id))
+        """,
+            (new_text, decision_id),
+        )
         conn.commit()
         conn.close()
 
@@ -370,17 +458,38 @@ class CollabPersistence:
     # File Operations
     # ========================================================================
 
-    def save_file(self, file_id: str, room_id: str, name: str,
-                 uploaded_by: str, uploaded_at: datetime, size: int,
-                 content_type: str, content: bytes, channel: str = "main"):
+    def save_file(
+        self,
+        file_id: str,
+        room_id: str,
+        name: str,
+        uploaded_by: str,
+        uploaded_at: datetime,
+        size: int,
+        content_type: str,
+        content: bytes,
+        channel: str = "main",
+    ):
         """Save file"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO files
             (id, room_id, name, uploaded_by, uploaded_at, size, content_type, channel, content)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (file_id, room_id, name, uploaded_by, uploaded_at.isoformat(),
-              size, content_type, channel, content))
+        """,
+            (
+                file_id,
+                room_id,
+                name,
+                uploaded_by,
+                uploaded_at.isoformat(),
+                size,
+                content_type,
+                channel,
+                content,
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -408,65 +517,59 @@ class CollabPersistence:
 
         # Member count
         cursor = conn.execute(
-            "SELECT COUNT(*) FROM members WHERE room_id = ? AND active = 1",
-            (room_id,)
+            "SELECT COUNT(*) FROM members WHERE room_id = ? AND active = 1", (room_id,)
         )
-        stats['active_members'] = cursor.fetchone()[0]
+        stats["active_members"] = cursor.fetchone()[0]
 
         # Message count
         cursor = conn.execute(
-            "SELECT COUNT(*) FROM messages WHERE room_id = ?",
-            (room_id,)
+            "SELECT COUNT(*) FROM messages WHERE room_id = ?", (room_id,)
         )
-        stats['total_messages'] = cursor.fetchone()[0]
+        stats["total_messages"] = cursor.fetchone()[0]
 
         # Decision count
         cursor = conn.execute(
             "SELECT COUNT(*), SUM(approved), SUM(vetoed) FROM decisions WHERE room_id = ?",
-            (room_id,)
+            (room_id,),
         )
         row = cursor.fetchone()
-        stats['total_decisions'] = row[0] or 0
-        stats['approved_decisions'] = row[1] or 0
-        stats['vetoed_decisions'] = row[2] or 0
+        stats["total_decisions"] = row[0] or 0
+        stats["approved_decisions"] = row[1] or 0
+        stats["vetoed_decisions"] = row[2] or 0
 
         # Task count
         cursor = conn.execute(
-            "SELECT COUNT(*), SUM(completed) FROM tasks WHERE room_id = ?",
-            (room_id,)
+            "SELECT COUNT(*), SUM(completed) FROM tasks WHERE room_id = ?", (room_id,)
         )
         row = cursor.fetchone()
-        stats['total_tasks'] = row[0] or 0
-        stats['completed_tasks'] = row[1] or 0
+        stats["total_tasks"] = row[0] or 0
+        stats["completed_tasks"] = row[1] or 0
 
         # File count
         cursor = conn.execute(
-            "SELECT COUNT(*), SUM(size) FROM files WHERE room_id = ?",
-            (room_id,)
+            "SELECT COUNT(*), SUM(size) FROM files WHERE room_id = ?", (room_id,)
         )
         row = cursor.fetchone()
-        stats['files_shared'] = row[0] or 0
-        stats['total_file_size'] = row[1] or 0
+        stats["files_shared"] = row[0] or 0
+        stats["total_file_size"] = row[1] or 0
 
         # Code execution count
         cursor = conn.execute(
-            "SELECT COUNT(*) FROM code_executions WHERE room_id = ?",
-            (room_id,)
+            "SELECT COUNT(*) FROM code_executions WHERE room_id = ?", (room_id,)
         )
-        stats['code_executions'] = cursor.fetchone()[0]
+        stats["code_executions"] = cursor.fetchone()[0]
 
         # Channel count
         cursor = conn.execute(
-            "SELECT COUNT(*) FROM channels WHERE room_id = ?",
-            (room_id,)
+            "SELECT COUNT(*) FROM channels WHERE room_id = ?", (room_id,)
         )
-        stats['channels'] = cursor.fetchone()[0]
+        stats["channels"] = cursor.fetchone()[0]
 
         conn.close()
         return stats
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("💾 Collaboration Room Persistence - Test")
     print("=" * 80)
@@ -479,17 +582,28 @@ if __name__ == '__main__':
     print("\n✅ Room saved")
 
     # Save members
-    db.save_member(room_id, "claude-code", "coordinator",
-                   datetime.now(timezone.utc), vote_weight=2.0)
-    db.save_member(room_id, "claude-desktop-1", "coder",
-                   datetime.now(timezone.utc))
+    db.save_member(
+        room_id,
+        "claude-code",
+        "coordinator",
+        datetime.now(timezone.utc),
+        vote_weight=2.0,
+    )
+    db.save_member(room_id, "claude-desktop-1", "coder", datetime.now(timezone.utc))
     print("✅ Members saved")
 
     # Save messages
-    db.save_message("msg-1", room_id, "claude-code", "Hello room!",
-                   datetime.now(timezone.utc))
-    db.save_message("msg-2", room_id, "claude-desktop-1", "Hi there!",
-                   datetime.now(timezone.utc), reply_to="msg-1")
+    db.save_message(
+        "msg-1", room_id, "claude-code", "Hello room!", datetime.now(timezone.utc)
+    )
+    db.save_message(
+        "msg-2",
+        room_id,
+        "claude-desktop-1",
+        "Hi there!",
+        datetime.now(timezone.utc),
+        reply_to="msg-1",
+    )
     print("✅ Messages saved")
 
     # Get stats

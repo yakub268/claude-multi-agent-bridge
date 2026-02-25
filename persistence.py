@@ -32,7 +32,8 @@ class MessageStore:
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
 
-        self.conn.execute("""
+        self.conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 from_client TEXT NOT NULL,
@@ -52,9 +53,11 @@ class MessageStore:
                 INDEX idx_timestamp (timestamp),
                 INDEX idx_created_at (created_at)
             )
-        """)
+        """
+        )
 
-        self.conn.execute("""
+        self.conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS message_stats (
                 date TEXT PRIMARY KEY,
                 total_messages INTEGER DEFAULT 0,
@@ -63,29 +66,33 @@ class MessageStore:
                 avg_latency REAL,
                 errors INTEGER DEFAULT 0
             )
-        """)
+        """
+        )
 
         self.conn.commit()
 
     def save_message(self, message: Dict) -> bool:
         """Save message to database"""
         try:
-            self.conn.execute("""
+            self.conn.execute(
+                """
                 INSERT INTO messages (
                     id, from_client, to_client, type, payload,
                     priority, timestamp, requires_ack, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                message['id'],
-                message['from'],
-                message['to'],
-                message['type'],
-                json.dumps(message['payload']),
-                message.get('priority', 5),
-                message['timestamp'],
-                message.get('requires_ack', False),
-                datetime.now(timezone.utc).isoformat()
-            ))
+            """,
+                (
+                    message["id"],
+                    message["from"],
+                    message["to"],
+                    message["type"],
+                    json.dumps(message["payload"]),
+                    message.get("priority", 5),
+                    message["timestamp"],
+                    message.get("requires_ack", False),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
 
             self.conn.commit()
             return True
@@ -94,13 +101,15 @@ class MessageStore:
             print(f"❌ Error saving message: {e}")
             return False
 
-    def get_messages(self,
-                     to_client: Optional[str] = None,
-                     from_client: Optional[str] = None,
-                     msg_type: Optional[str] = None,
-                     since: Optional[str] = None,
-                     limit: int = 100,
-                     undelivered_only: bool = False) -> List[Dict]:
+    def get_messages(
+        self,
+        to_client: Optional[str] = None,
+        from_client: Optional[str] = None,
+        msg_type: Optional[str] = None,
+        since: Optional[str] = None,
+        limit: int = 100,
+        undelivered_only: bool = False,
+    ) -> List[Dict]:
         """
         Query messages with filters
 
@@ -145,18 +154,20 @@ class MessageStore:
 
         messages = []
         for row in rows:
-            messages.append({
-                'id': row['id'],
-                'from': row['from_client'],
-                'to': row['to_client'],
-                'type': row['type'],
-                'payload': json.loads(row['payload']),
-                'priority': row['priority'],
-                'timestamp': row['timestamp'],
-                'requires_ack': bool(row['requires_ack']),
-                'acked': bool(row['acked']),
-                'delivered': bool(row['delivered'])
-            })
+            messages.append(
+                {
+                    "id": row["id"],
+                    "from": row["from_client"],
+                    "to": row["to_client"],
+                    "type": row["type"],
+                    "payload": json.loads(row["payload"]),
+                    "priority": row["priority"],
+                    "timestamp": row["timestamp"],
+                    "requires_ack": bool(row["requires_ack"]),
+                    "acked": bool(row["acked"]),
+                    "delivered": bool(row["delivered"]),
+                }
+            )
 
         return list(reversed(messages))  # Chronological order
 
@@ -164,8 +175,7 @@ class MessageStore:
         """Mark message as delivered"""
         try:
             self.conn.execute(
-                "UPDATE messages SET delivered = 1 WHERE id = ?",
-                (message_id,)
+                "UPDATE messages SET delivered = 1 WHERE id = ?", (message_id,)
             )
             self.conn.commit()
             return True
@@ -177,8 +187,7 @@ class MessageStore:
         """Mark message as acknowledged"""
         try:
             self.conn.execute(
-                "UPDATE messages SET acked = 1 WHERE id = ?",
-                (message_id,)
+                "UPDATE messages SET acked = 1 WHERE id = ?", (message_id,)
             )
             self.conn.commit()
             return True
@@ -186,28 +195,35 @@ class MessageStore:
             print(f"❌ Error marking acked: {e}")
             return False
 
-    def get_conversation(self, client1: str, client2: str, limit: int = 50) -> List[Dict]:
+    def get_conversation(
+        self, client1: str, client2: str, limit: int = 50
+    ) -> List[Dict]:
         """Get conversation between two clients"""
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             SELECT * FROM messages
             WHERE (from_client = ? AND to_client = ?)
                OR (from_client = ? AND to_client = ?)
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (client1, client2, client2, client1, limit))
+        """,
+            (client1, client2, client2, client1, limit),
+        )
 
         rows = cursor.fetchall()
         messages = []
 
         for row in rows:
-            messages.append({
-                'id': row['id'],
-                'from': row['from_client'],
-                'to': row['to_client'],
-                'type': row['type'],
-                'payload': json.loads(row['payload']),
-                'timestamp': row['timestamp']
-            })
+            messages.append(
+                {
+                    "id": row["id"],
+                    "from": row["from_client"],
+                    "to": row["to_client"],
+                    "type": row["type"],
+                    "payload": json.loads(row["payload"]),
+                    "timestamp": row["timestamp"],
+                }
+            )
 
         return list(reversed(messages))
 
@@ -217,8 +233,7 @@ class MessageStore:
         cutoff_iso = datetime.fromtimestamp(cutoff, timezone.utc).isoformat()
 
         cursor = self.conn.execute(
-            "DELETE FROM messages WHERE created_at < ?",
-            (cutoff_iso,)
+            "DELETE FROM messages WHERE created_at < ?", (cutoff_iso,)
         )
 
         self.conn.commit()
@@ -226,7 +241,8 @@ class MessageStore:
 
     def get_stats(self) -> Dict:
         """Get database statistics"""
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             SELECT
                 COUNT(*) as total,
                 COUNT(DISTINCT from_client) as unique_senders,
@@ -234,41 +250,47 @@ class MessageStore:
                 COUNT(CASE WHEN delivered = 1 THEN 1 END) as delivered,
                 COUNT(CASE WHEN acked = 1 THEN 1 END) as acked
             FROM messages
-        """)
+        """
+        )
 
         row = cursor.fetchone()
 
         return {
-            'total_messages': row['total'],
-            'unique_senders': row['unique_senders'],
-            'unique_recipients': row['unique_recipients'],
-            'delivered': row['delivered'],
-            'acknowledged': row['acked'],
-            'delivery_rate': row['delivered'] / row['total'] if row['total'] > 0 else 0,
-            'ack_rate': row['acked'] / row['total'] if row['total'] > 0 else 0
+            "total_messages": row["total"],
+            "unique_senders": row["unique_senders"],
+            "unique_recipients": row["unique_recipients"],
+            "delivered": row["delivered"],
+            "acknowledged": row["acked"],
+            "delivery_rate": row["delivered"] / row["total"] if row["total"] > 0 else 0,
+            "ack_rate": row["acked"] / row["total"] if row["total"] > 0 else 0,
         }
 
     def search_messages(self, query: str, limit: int = 50) -> List[Dict]:
         """Full-text search in message payloads"""
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             SELECT * FROM messages
             WHERE payload LIKE ?
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (f"%{query}%", limit))
+        """,
+            (f"%{query}%", limit),
+        )
 
         rows = cursor.fetchall()
         messages = []
 
         for row in rows:
-            messages.append({
-                'id': row['id'],
-                'from': row['from_client'],
-                'to': row['to_client'],
-                'type': row['type'],
-                'payload': json.loads(row['payload']),
-                'timestamp': row['timestamp']
-            })
+            messages.append(
+                {
+                    "id": row["id"],
+                    "from": row["from_client"],
+                    "to": row["to_client"],
+                    "type": row["type"],
+                    "payload": json.loads(row["payload"]),
+                    "timestamp": row["timestamp"],
+                }
+            )
 
         return messages
 
@@ -282,10 +304,10 @@ class MessageStore:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🗄️  Message Persistence Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create store
     store = MessageStore("test_messages.db")
@@ -293,21 +315,21 @@ if __name__ == '__main__':
     # Save messages
     messages = [
         {
-            'id': 'msg-1',
-            'from': 'code',
-            'to': 'browser',
-            'type': 'command',
-            'payload': {'text': 'What is 2+2?'},
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            "id": "msg-1",
+            "from": "code",
+            "to": "browser",
+            "type": "command",
+            "payload": {"text": "What is 2+2?"},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
         {
-            'id': 'msg-2',
-            'from': 'browser',
-            'to': 'code',
-            'type': 'response',
-            'payload': {'response': '4'},
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
+            "id": "msg-2",
+            "from": "browser",
+            "to": "code",
+            "type": "response",
+            "payload": {"response": "4"},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     ]
 
     print("\n📝 Saving messages...")
@@ -317,12 +339,12 @@ if __name__ == '__main__':
 
     # Query
     print("\n📊 Querying messages to 'browser'...")
-    results = store.get_messages(to_client='browser', limit=10)
+    results = store.get_messages(to_client="browser", limit=10)
     print(f"   Found {len(results)} messages")
 
     # Conversation
     print("\n💬 Getting conversation: code <-> browser")
-    conversation = store.get_conversation('code', 'browser')
+    conversation = store.get_conversation("code", "browser")
     for msg in conversation:
         print(f"   {msg['from']} → {msg['to']}: {msg['type']}")
 

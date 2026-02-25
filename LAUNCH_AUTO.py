@@ -23,6 +23,7 @@ from code_client import CodeClient
 import time
 import argparse
 
+
 class LaunchAutomation:
     def __init__(self):
         self.client = CodeClient()
@@ -32,10 +33,7 @@ class LaunchAutomation:
         print("\n📤 Sending to Browser Claude:")
         print(f"   {prompt[:100]}...")
 
-        self.client.send('browser', 'command', {
-            'action': 'run_prompt',
-            'text': prompt
-        })
+        self.client.send("browser", "command", {"action": "run_prompt", "text": prompt})
 
         print(f"⏳ Waiting {wait_time}s for response...")
 
@@ -44,8 +42,8 @@ class LaunchAutomation:
             messages = self.client.poll()
 
             for msg in messages:
-                if msg.get('type') == 'claude_response':
-                    response = msg['payload']['response']
+                if msg.get("type") == "claude_response":
+                    response = msg["payload"]["response"]
                     print(f"✅ Got response ({len(response)} chars)")
                     return response
 
@@ -56,24 +54,18 @@ class LaunchAutomation:
 
     def launch_twitter(self):
         """Post Twitter thread via Browser Claude"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🐦 LAUNCHING ON TWITTER")
-        print("="*70)
+        print("=" * 70)
 
         tweets = [
             "I just built something wild 🧵\n\nClaude instances can now talk to each other.\n\nCode → Browser → Code\nReal-time. Bidirectional. Actually works.\n\nHere's how it changes AI development:",
-
             "The problem: You're coding in Claude Code while researching in Browser Claude.\n\nYou copy-paste between them.\n\nIt's 2026.\n\nWe can do better.",
-
             "The solution: Direct AI-to-AI communication\n\nSend command from Code → Browser Claude types it → Response comes back automatically\n\n```python\nc.send('browser', 'command', {'text': 'Research React hooks'})\nresponse = c.poll()  # Done.\n```\n\n5 steps → 1 line of code",
-
             "How it works:\n\n→ HTTP message bus (localhost:5001)\n→ Chrome extension (CSP-compliant)\n→ DOM manipulation (no eval())\n→ Response extraction\n→ Back to your code\n\nEnd-to-end latency: ~3 seconds",
-
             "Real use cases:\n\n1. Parallel research (keep coding while Browser Claude researches)\n2. Multi-model consensus (ask multiple instances, compare answers)\n3. Extended context (access Browser Claude's artifacts/projects)\n4. Automated workflows",
-
-            "Technical challenges solved:\n\n✅ Content Security Policy (pure DOM manipulation)\n✅ Chrome caching (version bumping)\n✅ Response timing (watch \"Done\", not \"Thinking\")\n✅ Message backlogs (timestamp filtering)\n✅ Duplicate sends (deduplication)\n\nWar stories in the README.",
-
-            "Open sourced for the community:\n\n→ github.com/yakub268/claude-multi-agent-bridge\n→ MIT License\n→ Working examples included\n→ Full documentation\n\nStar if this inspires you ⭐\n\nLet's build multi-agent systems together 🤖↔️🤖"
+            'Technical challenges solved:\n\n✅ Content Security Policy (pure DOM manipulation)\n✅ Chrome caching (version bumping)\n✅ Response timing (watch "Done", not "Thinking")\n✅ Message backlogs (timestamp filtering)\n✅ Duplicate sends (deduplication)\n\nWar stories in the README.',
+            "Open sourced for the community:\n\n→ github.com/yakub268/claude-multi-agent-bridge\n→ MIT License\n→ Working examples included\n→ Full documentation\n\nStar if this inspires you ⭐\n\nLet's build multi-agent systems together 🤖↔️🤖",
         ]
 
         prompt = """I need to post a Twitter thread. Here are the 7 tweets:
@@ -100,9 +92,9 @@ Tell me when it's done!"""
 
     def launch_reddit(self):
         """Post to Reddit via Browser Claude"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📱 LAUNCHING ON REDDIT")
-        print("="*70)
+        print("=" * 70)
 
         title = "I built a system for Claude instances to communicate with each other"
 
@@ -180,9 +172,9 @@ Let me know when it's done!"""
 
     def launch_discord(self):
         """Post to Discord via Browser Claude"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("💬 LAUNCHING ON DISCORD")
-        print("="*70)
+        print("=" * 70)
 
         message = """🎉 Just finished building something I'm excited to share!
 
@@ -244,9 +236,9 @@ Let me know when posted!"""
 
     def email_anthropic(self):
         """Email Anthropic via Browser Claude"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📧 EMAILING ANTHROPIC")
-        print("="*70)
+        print("=" * 70)
 
         prompt = """Please help me compose and send an email to Anthropic:
 
@@ -287,19 +279,20 @@ Let me know when sent!"""
         else:
             print("\n❌ Failed - try manually")
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Automated launch via our own tool!')
-    parser.add_argument('--all', action='store_true', help='Launch everything')
-    parser.add_argument('--twitter', action='store_true', help='Post Twitter thread')
-    parser.add_argument('--reddit', action='store_true', help='Post to Reddit')
-    parser.add_argument('--discord', action='store_true', help='Post to Discord')
-    parser.add_argument('--email', action='store_true', help='Email Anthropic')
+    parser = argparse.ArgumentParser(description="Automated launch via our own tool!")
+    parser.add_argument("--all", action="store_true", help="Launch everything")
+    parser.add_argument("--twitter", action="store_true", help="Post Twitter thread")
+    parser.add_argument("--reddit", action="store_true", help="Post to Reddit")
+    parser.add_argument("--discord", action="store_true", help="Post to Discord")
+    parser.add_argument("--email", action="store_true", help="Email Anthropic")
 
     args = parser.parse_args()
 
-    print("="*70)
+    print("=" * 70)
     print("🚀 CLAUDE MULTI-AGENT BRIDGE - AUTOMATED LAUNCH")
-    print("="*70)
+    print("=" * 70)
     print("\nUsing our own tool to launch itself!")
     print("Browser Claude will help us post everywhere.\n")
 
@@ -327,5 +320,6 @@ def main():
         print("  python LAUNCH_AUTO.py --reddit")
         print("  python LAUNCH_AUTO.py --all")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

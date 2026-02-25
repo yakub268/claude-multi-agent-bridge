@@ -8,12 +8,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def record_demo():
     """Record a clean demo showing the full communication loop"""
 
-    print("="*70)
+    print("=" * 70)
     print("🎬 DEMO RECORDER - Multi-Agent Bridge")
-    print("="*70)
+    print("=" * 70)
     print()
     print("This will demonstrate:")
     print("  1. Code sending: 'What is 2+2?'")
@@ -38,9 +39,9 @@ def record_demo():
         print(f"Starting in {i}...")
         time.sleep(1)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🚀 DEMO STARTING")
-    print("="*70)
+    print("=" * 70)
     print()
 
     # Initialize client
@@ -57,10 +58,7 @@ def record_demo():
     time.sleep(1)
 
     # Send message
-    c.send('browser', 'command', {
-        'action': 'run_prompt',
-        'text': prompt
-    })
+    c.send("browser", "command", {"action": "run_prompt", "text": prompt})
 
     print("⏳ Message sent! Waiting for Browser Claude to respond...")
     print()
@@ -74,18 +72,18 @@ def record_demo():
 
         messages = c.poll()
         for msg in messages:
-            if msg.get('type') == 'claude_response':
-                response = msg['payload']['response']
+            if msg.get("type") == "claude_response":
+                response = msg["payload"]["response"]
                 print()
-                print("="*70)
+                print("=" * 70)
                 print("📥 RESPONSE RECEIVED FROM BROWSER CLAUDE")
-                print("="*70)
+                print("=" * 70)
                 print()
-                print(f'   Answer: {response}')
+                print(f"   Answer: {response}")
                 print()
-                print("="*70)
+                print("=" * 70)
                 print("✅ MULTI-AGENT COMMUNICATION SUCCESSFUL!")
-                print("="*70)
+                print("=" * 70)
                 print()
                 print("Code → Browser → Code in ~3 seconds")
                 print("No copy-paste. No tab switching. Just works.")
@@ -103,9 +101,10 @@ def record_demo():
         print("   3. Extension is loaded")
 
     print()
-    print("="*70)
+    print("=" * 70)
     print("Demo complete! Record this and convert to GIF.")
-    print("="*70)
+    print("=" * 70)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     record_demo()

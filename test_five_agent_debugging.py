@@ -4,11 +4,7 @@ Five-Agent Debugging with Think-Tank Features
 Simulates 5 Claude agents debugging a trading bot using critique, debate, and amendments
 """
 import pytest
-from collaboration_enhanced import (
-    EnhancedCollaborationHub,
-    MemberRole,
-    VoteType
-)
+from collaboration_enhanced import EnhancedCollaborationHub, MemberRole, VoteType
 
 
 @pytest.fixture
@@ -37,15 +33,26 @@ class TestBasicDebugging:
 
         # Each agent shares findings
         room.send_message("coordinator", "🐛 Bug: Trades executing at wrong times")
-        room.send_message("timing-specialist", "Analyzed logs: timestamps show UTC but trades execute in local time")
-        room.send_message("code-reviewer", "Found issue in scheduler.py line 847 - uses datetime.now() instead of datetime.utcnow()")
-        room.send_message("log-analyzer", "Log analysis confirms: 7-hour offset between logged time and actual execution")
-        room.send_message("database-expert", "Database timestamps are correct (UTC), issue is in scheduler")
+        room.send_message(
+            "timing-specialist",
+            "Analyzed logs: timestamps show UTC but trades execute in local time",
+        )
+        room.send_message(
+            "code-reviewer",
+            "Found issue in scheduler.py line 847 - uses datetime.now() instead of datetime.utcnow()",
+        )
+        room.send_message(
+            "log-analyzer",
+            "Log analysis confirms: 7-hour offset between logged time and actual execution",
+        )
+        room.send_message(
+            "database-expert",
+            "Database timestamps are correct (UTC), issue is in scheduler",
+        )
 
         # Coordinator proposes fix
         fix_id = room.propose_decision(
-            "coordinator",
-            "Change line 847 from datetime.now() to datetime.utcnow()"
+            "coordinator", "Change line 847 from datetime.now() to datetime.utcnow()"
         )
 
         # All vote
@@ -73,8 +80,7 @@ class TestDebugWithCritiques:
 
         # Initial (wrong) diagnosis
         decision_id = room.propose_decision(
-            "coordinator",
-            "Bug is in timezone parsing - fix by adding pytz library"
+            "coordinator", "Bug is in timezone parsing - fix by adding pytz library"
         )
 
         # Timing specialist critiques (blocking)
@@ -83,7 +89,7 @@ class TestDebugWithCritiques:
             decision_id,
             "Not a parsing issue - it's UTC conversion. Line 847 uses local time instead of UTC. "
             "Adding pytz won't fix this.",
-            severity="blocking"
+            severity="blocking",
         )
 
         # Code reviewer adds supporting critique
@@ -92,14 +98,14 @@ class TestDebugWithCritiques:
             decision_id,
             "Confirmed: datetime.now() at line 847 should be datetime.utcnow(). "
             "Also found DST handling bug at line 1023.",
-            severity="major"
+            severity="major",
         )
 
         # Coordinator proposes amendment based on critiques
         amendment_id = room.propose_amendment(
             "coordinator",
             decision_id,
-            "Fix UTC conversion at line 847 AND DST handling at line 1023"
+            "Fix UTC conversion at line 847 AND DST handling at line 1023",
         )
 
         # Accept amendment
@@ -108,7 +114,7 @@ class TestDebugWithCritiques:
         decision = room.decisions[0]
         assert "line 847" in decision.text
         assert "line 1023" in decision.text
-        assert decision.amendments[0]['accepted'] == True
+        assert decision.amendments[0]["accepted"] == True
 
         # Verify critiques were addressed
         critiques = room.get_critiques_for_message(decision_id)
@@ -130,7 +136,7 @@ class TestDebugWithDebate:
         decision_id = room.propose_decision(
             "coordinator",
             "Quick fix: Change line 847 to use UTC",
-            vote_type=VoteType.SIMPLE_MAJORITY
+            vote_type=VoteType.SIMPLE_MAJORITY,
         )
 
         # PRO arguments (quick fix)
@@ -139,14 +145,14 @@ class TestDebugWithDebate:
             decision_id,
             "pro",
             "Immediate fix - stops bleeding. Can refactor later.",
-            evidence=["Low risk: 1 line change", "Can deploy in 5 minutes"]
+            evidence=["Low risk: 1 line change", "Can deploy in 5 minutes"],
         )
 
         room.add_debate_argument(
             "timing-specialist",
             decision_id,
             "pro",
-            "Quick fix targets the exact bug causing trading losses"
+            "Quick fix targets the exact bug causing trading losses",
         )
 
         # CON arguments (comprehensive refactor)
@@ -156,26 +162,26 @@ class TestDebugWithDebate:
             "con",
             "Found 47 other datetime.now() calls that should be UTC. "
             "Quick fix leaves 46 time bombs.",
-            evidence=["grep shows 47 occurrences in codebase"]
+            evidence=["grep shows 47 occurrences in codebase"],
         )
 
         room.add_debate_argument(
             "database-expert",
             decision_id,
             "con",
-            "DST transitions will break again in 2 weeks. Need comprehensive fix."
+            "DST transitions will break again in 2 weeks. Need comprehensive fix.",
         )
 
         # Get debate summary
         debate = room.get_debate_summary(decision_id)
-        assert debate['total_pro'] == 2
-        assert debate['total_con'] == 2
+        assert debate["total_pro"] == 2
+        assert debate["total_con"] == 2
 
         # Coordinator proposes compromise
         amendment_id = room.propose_amendment(
             "coordinator",
             decision_id,
-            "IMMEDIATE: Fix line 847. TOMORROW: Refactor all 47 datetime calls. Add tests for DST."
+            "IMMEDIATE: Fix line 847. TOMORROW: Refactor all 47 datetime calls. Add tests for DST.",
         )
 
         room.accept_amendment(decision_id, amendment_id)
@@ -207,38 +213,32 @@ class TestDebugWithAlternatives:
         original_id = room.propose_decision(
             "coordinator",
             "Fix: Change line 847 to datetime.utcnow()",
-            vote_type=VoteType.WEIGHTED
+            vote_type=VoteType.WEIGHTED,
         )
 
         # Alternative 1: Comprehensive refactor
         alt1 = room.propose_alternative(
             "code-reviewer",
             original_id,
-            "Fix: Refactor entire datetime handling to use timezone-aware objects (pytz)"
+            "Fix: Refactor entire datetime handling to use timezone-aware objects (pytz)",
         )
 
         # Alternative 2: Library replacement
         alt2 = room.propose_alternative(
             "database-expert",
             original_id,
-            "Fix: Replace all datetime with pendulum library (handles DST automatically)"
+            "Fix: Replace all datetime with pendulum library (handles DST automatically)",
         )
 
         # Debate each approach
         # Original: PRO
         room.add_debate_argument(
-            "coordinator",
-            original_id,
-            "pro",
-            "Fastest fix - 5 minutes"
+            "coordinator", original_id, "pro", "Fastest fix - 5 minutes"
         )
 
         # Original: CON
         room.add_debate_argument(
-            "code-reviewer",
-            original_id,
-            "con",
-            "Leaves 46 other bugs"
+            "code-reviewer", original_id, "con", "Leaves 46 other bugs"
         )
 
         # Alt1 (pytz): PRO
@@ -246,7 +246,7 @@ class TestDebugWithAlternatives:
             "timing-specialist",
             alt1,
             "pro",
-            "Comprehensive - fixes all timezone issues forever"
+            "Comprehensive - fixes all timezone issues forever",
         )
 
         # Alt1: CON
@@ -254,7 +254,7 @@ class TestDebugWithAlternatives:
             "log-analyzer",
             alt1,
             "con",
-            "3-day refactor effort, high risk of introducing new bugs"
+            "3-day refactor effort, high risk of introducing new bugs",
         )
 
         # Alt2 (pendulum): PRO
@@ -262,7 +262,7 @@ class TestDebugWithAlternatives:
             "database-expert",
             alt2,
             "pro",
-            "Pendulum handles DST automatically - future-proo"
+            "Pendulum handles DST automatically - future-proo",
         )
 
         # Alt2: CON
@@ -270,7 +270,7 @@ class TestDebugWithAlternatives:
             "coordinator",
             alt2,
             "con",
-            "New dependency - needs security audit and team training"
+            "New dependency - needs security audit and team training",
         )
 
         # Vote for Alt1 (comprehensive refactor)
@@ -307,35 +307,35 @@ class TestRealWorldScenario:
         # 1. Bug report
         room.send_message(
             "coordinator",
-            "🚨 CRITICAL BUG: Trading bot bought AAPL at 4am EST instead of 10am EST. Lost $2,400."
+            "🚨 CRITICAL BUG: Trading bot bought AAPL at 4am EST instead of 10am EST. Lost $2,400.",
         )
 
         # 2. Agents investigate
         room.send_message(
             "log-analyzer",
-            "Log shows: order_time=2024-02-23T09:00:00 (UTC) but NYSE opens at 14:30 UTC. 6hr difference."
+            "Log shows: order_time=2024-02-23T09:00:00 (UTC) but NYSE opens at 14:30 UTC. 6hr difference.",
         )
 
         room.send_message(
             "timing-specialist",
-            "Hypothesis: Scheduler uses local time (MST -7hr) but NYSE is EST (-5hr). Off by 2hr."
+            "Hypothesis: Scheduler uses local time (MST -7hr) but NYSE is EST (-5hr). Off by 2hr.",
         )
 
         room.send_message(
             "code-reviewer",
             "Found in scheduler.py line 847: datetime.now() + market_hours[symbol]. "
-            "No timezone info!"
+            "No timezone info!",
         )
 
         room.send_message(
             "database-expert",
-            "Database shows all timestamps in UTC. Issue is in scheduler, not DB."
+            "Database shows all timestamps in UTC. Issue is in scheduler, not DB.",
         )
 
         # 3. Initial hypothesis (WRONG)
         hypothesis_id = room.propose_decision(
             "coordinator",
-            "Bug is timezone parsing in scheduler - fix by converting to market timezone"
+            "Bug is timezone parsing in scheduler - fix by converting to market timezone",
         )
 
         # 4. Critiques reveal root cause
@@ -345,7 +345,7 @@ class TestRealWorldScenario:
             "Not a parsing issue. Root cause: datetime.now() is timezone-naive. "
             "When comparing to market hours (UTC), Python assumes same timezone. "
             "Fix: Use timezone-aware datetime objects throughout.",
-            severity="blocking"
+            severity="blocking",
         )
 
         room.send_critique(
@@ -353,7 +353,7 @@ class TestRealWorldScenario:
             hypothesis_id,
             "Also found: DST transitions on March 10 will break again. "
             "Need timezone-aware objects, not just UTC conversion.",
-            severity="major"
+            severity="major",
         )
 
         # 5. Debate on fix scope
@@ -361,7 +361,7 @@ class TestRealWorldScenario:
         amendment1 = room.propose_amendment(
             "coordinator",
             hypothesis_id,
-            "Fix: Make all datetime objects timezone-aware using pytz"
+            "Fix: Make all datetime objects timezone-aware using pytz",
         )
 
         room.accept_amendment(hypothesis_id, amendment1)
@@ -371,14 +371,14 @@ class TestRealWorldScenario:
             "timing-specialist",
             hypothesis_id,
             "pro",
-            "Timezone-aware objects prevent this entire class of bugs"
+            "Timezone-aware objects prevent this entire class of bugs",
         )
 
         room.add_debate_argument(
             "log-analyzer",
             hypothesis_id,
             "con",
-            "Changing 47 datetime calls is risky - could introduce new bugs"
+            "Changing 47 datetime calls is risky - could introduce new bugs",
         )
 
         # Alternative proposed
@@ -386,7 +386,7 @@ class TestRealWorldScenario:
             "database-expert",
             hypothesis_id,
             "PHASE 1: Fix line 847 only (blocks immediate bleeding). "
-            "PHASE 2: Comprehensive refactor next week with full test coverage."
+            "PHASE 2: Comprehensive refactor next week with full test coverage.",
         )
 
         # Debate alternative
@@ -394,14 +394,14 @@ class TestRealWorldScenario:
             "coordinator",
             alt_id,
             "pro",
-            "2-phase approach: immediate fix + planned refactor. Best of both."
+            "2-phase approach: immediate fix + planned refactor. Best of both.",
         )
 
         room.add_debate_argument(
             "code-reviewer",
             alt_id,
             "pro",
-            "Gives time to write comprehensive tests before refactor"
+            "Gives time to write comprehensive tests before refactor",
         )
 
         # Vote on alternative (weighted: need >50% of 7.0 total = >3.5)
@@ -433,8 +433,7 @@ class TestConflictResolution:
         room = debugging_room
 
         decision_id = room.propose_decision(
-            "coordinator",
-            "Deploy hotfix immediately to production"
+            "coordinator", "Deploy hotfix immediately to production"
         )
 
         # Code reviewer vetoes (no tests)
@@ -448,14 +447,14 @@ class TestConflictResolution:
             "code-reviewer",
             decision_id,
             "Deploying without tests risks making bug worse. Need smoke tests at minimum.",
-            severity="blocking"
+            severity="blocking",
         )
 
         # Coordinator proposes amendment
         amendment_id = room.propose_amendment(
             "coordinator",
             decision_id,
-            "Deploy hotfix to staging, run smoke tests, THEN production"
+            "Deploy hotfix to staging, run smoke tests, THEN production",
         )
 
         room.accept_amendment(decision_id, amendment_id)
@@ -464,7 +463,7 @@ class TestConflictResolution:
         new_decision_id = room.propose_decision(
             "coordinator",
             decision.text,  # Uses amended text
-            vote_type=VoteType.CONSENSUS
+            vote_type=VoteType.CONSENSUS,
         )
 
         # Now all vote (including original vetoer)
@@ -491,8 +490,7 @@ class TestPerformanceMetrics:
 
         # Wrong diagnosis
         wrong_fix = room.propose_decision(
-            "coordinator",
-            "Bug is in database - add index on timestamp column"
+            "coordinator", "Bug is in database - add index on timestamp column"
         )
 
         # Critique catches mistake
@@ -500,14 +498,14 @@ class TestPerformanceMetrics:
             "database-expert",
             wrong_fix,
             "Database performance is fine. Real bug is in scheduler.py line 847 - uses local time.",
-            severity="blocking"
+            severity="blocking",
         )
 
         # Amendment corrects
         amendment = room.propose_amendment(
             "coordinator",
             wrong_fix,
-            "Bug is in scheduler.py line 847 - change datetime.now() to datetime.utcnow()"
+            "Bug is in scheduler.py line 847 - change datetime.now() to datetime.utcnow()",
         )
 
         room.accept_amendment(wrong_fix, amendment)
@@ -517,5 +515,5 @@ class TestPerformanceMetrics:
         assert "database" not in decision.text  # Original wrong diagnosis removed
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--tb=short'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

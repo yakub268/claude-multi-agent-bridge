@@ -14,12 +14,13 @@ BASE_URL = "http://localhost:5001/api"
 
 # Pick ONE role (change this in each Claude window):
 AVAILABLE_ROLES = {
-    "1": "agent_manual_trades",      # Manual Trade Analyzer
-    "2": "agent_bot_signals",        # Bot Signal Inspector
-    "3": "agent_execution_logs",     # Execution Tracer
-    "4": "agent_position_sizing",    # Position Sizing Auditor
-    "5": "agent_shadow_pnl"          # Shadow P&L Synthesizer
+    "1": "agent_manual_trades",  # Manual Trade Analyzer
+    "2": "agent_bot_signals",  # Bot Signal Inspector
+    "3": "agent_execution_logs",  # Execution Tracer
+    "4": "agent_position_sizing",  # Position Sizing Auditor
+    "5": "agent_shadow_pnl",  # Shadow P&L Synthesizer
 }
+
 
 def select_role():
     """Interactive role selection"""
@@ -41,6 +42,7 @@ def select_role():
 
     return AVAILABLE_ROLES[choice]
 
+
 def poll_task(channel):
     """Poll for assigned task"""
     print(f"\n📬 Polling for task on channel: {channel}")
@@ -48,7 +50,9 @@ def poll_task(channel):
 
     while True:
         try:
-            response = requests.get(f"{BASE_URL}/messages", params={"channel": channel}, timeout=5)
+            response = requests.get(
+                f"{BASE_URL}/messages", params={"channel": channel}, timeout=5
+            )
             if response.status_code == 200:
                 messages = response.json().get("messages", [])
                 if messages:
@@ -64,13 +68,14 @@ def poll_task(channel):
 
         time.sleep(3)
 
+
 def send_result(channel, result):
     """Send analysis result to orchestrator"""
     try:
         payload = {
             "channel": "diagnostic_orchestrator",
             "sender": channel,
-            "content": result
+            "content": result,
         }
         response = requests.post(f"{BASE_URL}/send", json=payload, timeout=5)
         if response.status_code == 200:
@@ -82,6 +87,7 @@ def send_result(channel, result):
     except Exception as e:
         print(f"\n❌ Send error: {e}")
         return False
+
 
 def main():
     """Main agent loop"""
@@ -101,7 +107,8 @@ def main():
     print("\n" + "=" * 60)
     print("👤 HUMAN CLAUDE: Perform the analysis described above")
     print("=" * 60)
-    print("""
+    print(
+        """
 Instructions:
 1. Read the task description carefully
 2. Use Claude Code tools (Read, Bash, Grep, etc) to gather data
@@ -120,7 +127,8 @@ When ready to send results, run:
 
     send_result(AGENT_CHANNEL, result)
 
-""")
+"""
+    )
 
     print(f"💡 Your channel: {agent_channel}")
     print("💡 Send results to: diagnostic_orchestrator")
@@ -133,6 +141,7 @@ When ready to send results, run:
     # Drop into interactive mode
     print("📝 Ready for interactive analysis. Use tools to complete your task.")
     print("   Then call: send_result(AGENT_CHANNEL, your_json_result)")
+
 
 if __name__ == "__main__":
     main()

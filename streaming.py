@@ -26,6 +26,7 @@ class SSEClient:
         connected_at: Connection timestamp
         subscriptions: Set of event types client is subscribed to
     """
+
     client_id: str
     queue: Queue
     last_event_id: Optional[str] = None
@@ -76,12 +77,14 @@ class SSEManager:
         self.event_counter = 0
         self.lock = Lock()
         self.stats = {
-            'total_connections': 0,
-            'total_events_sent': 0,
-            'total_broadcasts': 0
+            "total_connections": 0,
+            "total_events_sent": 0,
+            "total_broadcasts": 0,
         }
 
-    def register_client(self, client_id: str, subscriptions: Optional[set] = None) -> SSEClient:
+    def register_client(
+        self, client_id: str, subscriptions: Optional[set] = None
+    ) -> SSEClient:
         """
         Register new SSE client
 
@@ -101,10 +104,10 @@ class SSEManager:
                 client = SSEClient(
                     client_id=client_id,
                     queue=Queue(maxsize=self.max_queue_size),
-                    subscriptions=subscriptions or set()
+                    subscriptions=subscriptions or set(),
                 )
                 self.clients[client_id] = client
-                self.stats['total_connections'] += 1
+                self.stats["total_connections"] += 1
 
             return client
 
@@ -114,7 +117,13 @@ class SSEManager:
             if client_id in self.clients:
                 del self.clients[client_id]
 
-    def send_event(self, client_id: str, event_type: str, data: Dict, event_id: Optional[str] = None):
+    def send_event(
+        self,
+        client_id: str,
+        event_type: str,
+        data: Dict,
+        event_id: Optional[str] = None,
+    ):
         """
         Send event to specific client
 
@@ -141,21 +150,26 @@ class SSEManager:
 
             # Enqueue event
             try:
-                client.queue.put({
-                    'id': event_id,
-                    'event': event_type,
-                    'data': data,
-                    'timestamp': datetime.now(timezone.utc).isoformat()
-                }, block=False)
+                client.queue.put(
+                    {
+                        "id": event_id,
+                        "event": event_type,
+                        "data": data,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                    block=False,
+                )
 
                 client.last_event_id = event_id
-                self.stats['total_events_sent'] += 1
+                self.stats["total_events_sent"] += 1
 
             except Exception:
                 # Queue full - skip event
                 pass
 
-    def broadcast(self, event_type: str, data: Dict, exclude: Optional[List[str]] = None):
+    def broadcast(
+        self, event_type: str, data: Dict, exclude: Optional[List[str]] = None
+    ):
         """
         Broadcast event to all clients
 
@@ -169,13 +183,15 @@ class SSEManager:
         with self.lock:
             self.event_counter += 1
             event_id = f"event-{self.event_counter}"
-            self.stats['total_broadcasts'] += 1
+            self.stats["total_broadcasts"] += 1
 
             for client_id in list(self.clients.keys()):
                 if client_id not in exclude:
                     self.send_event(client_id, event_type, data, event_id)
 
-    def stream_events(self, client_id: str, subscriptions: Optional[set] = None) -> Generator:
+    def stream_events(
+        self, client_id: str, subscriptions: Optional[set] = None
+    ) -> Generator:
         """
         Generate SSE stream for client
 
@@ -190,10 +206,10 @@ class SSEManager:
 
         try:
             # Send initial connection event
-            yield self._format_event('connected', {
-                'client_id': client_id,
-                'timestamp': client.connected_at.isoformat()
-            })
+            yield self._format_event(
+                "connected",
+                {"client_id": client_id, "timestamp": client.connected_at.isoformat()},
+            )
 
             last_heartbeat = time.time()
 
@@ -201,7 +217,7 @@ class SSEManager:
                 # Check for messages in queue
                 try:
                     event = client.queue.get(timeout=1)
-                    yield self._format_event(event['event'], event['data'], event['id'])
+                    yield self._format_event(event["event"], event["data"], event["id"])
 
                 except Empty:
                     # No messages - check if heartbeat needed
@@ -214,7 +230,9 @@ class SSEManager:
             # Client disconnected
             self.unregister_client(client_id)
 
-    def _format_event(self, event_type: str, data: Dict, event_id: Optional[str] = None) -> str:
+    def _format_event(
+        self, event_type: str, data: Dict, event_id: Optional[str] = None
+    ) -> str:
         """
         Format event in SSE format
 
@@ -245,8 +263,8 @@ class SSEManager:
         with self.lock:
             return {
                 **self.stats,
-                'active_clients': len(self.clients),
-                'total_queued': sum(c.queue.qsize() for c in self.clients.values())
+                "active_clients": len(self.clients),
+                "total_queued": sum(c.queue.qsize() for c in self.clients.values()),
             }
 
     def get_client_info(self, client_id: str) -> Optional[Dict]:
@@ -258,17 +276,18 @@ class SSEManager:
             client = self.clients[client_id]
 
             return {
-                'client_id': client.client_id,
-                'connected_at': client.connected_at.isoformat(),
-                'subscriptions': list(client.subscriptions),
-                'queue_size': client.queue.qsize(),
-                'last_event_id': client.last_event_id
+                "client_id": client.client_id,
+                "connected_at": client.connected_at.isoformat(),
+                "subscriptions": list(client.subscriptions),
+                "queue_size": client.queue.qsize(),
+                "last_event_id": client.last_event_id,
             }
 
 
 # ============================================================================
 # Flask Integration
 # ============================================================================
+
 
 def create_sse_blueprint(manager: SSEManager) -> Blueprint:
     """
@@ -280,9 +299,9 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
     Returns:
         Flask Blueprint
     """
-    bp = Blueprint('streaming', __name__, url_prefix='/stream')
+    bp = Blueprint("streaming", __name__, url_prefix="/stream")
 
-    @bp.route('/events', methods=['GET'])
+    @bp.route("/events", methods=["GET"])
     def stream_all_events():
         """
         Stream all events
@@ -291,22 +310,22 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
             ?client_id=xyz - Client identifier
             ?subscribe=event1,event2 - Filter event types
         """
-        client_id = request.args.get('client_id', str(uuid.uuid4()))
-        subscribe = request.args.get('subscribe', '')
+        client_id = request.args.get("client_id", str(uuid.uuid4()))
+        subscribe = request.args.get("subscribe", "")
 
-        subscriptions = set(subscribe.split(',')) if subscribe else None
+        subscriptions = set(subscribe.split(",")) if subscribe else None
 
         return Response(
             manager.stream_events(client_id, subscriptions),
-            mimetype='text/event-stream',
+            mimetype="text/event-stream",
             headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no',  # Disable nginx buffering
-                'Connection': 'keep-alive'
-            }
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+                "Connection": "keep-alive",
+            },
         )
 
-    @bp.route('/broadcast', methods=['POST'])
+    @bp.route("/broadcast", methods=["POST"])
     def broadcast_event():
         """
         Broadcast event to all clients
@@ -318,14 +337,14 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
             }
         """
         payload = request.json
-        event_type = payload.get('event', 'message')
-        data = payload.get('data', {})
+        event_type = payload.get("event", "message")
+        data = payload.get("data", {})
 
         manager.broadcast(event_type, data)
 
-        return {'status': 'broadcasted'}
+        return {"status": "broadcasted"}
 
-    @bp.route('/send', methods=['POST'])
+    @bp.route("/send", methods=["POST"])
     def send_event():
         """
         Send event to specific client
@@ -338,20 +357,20 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
             }
         """
         payload = request.json
-        client_id = payload['client_id']
-        event_type = payload.get('event', 'message')
-        data = payload.get('data', {})
+        client_id = payload["client_id"]
+        event_type = payload.get("event", "message")
+        data = payload.get("data", {})
 
         manager.send_event(client_id, event_type, data)
 
-        return {'status': 'sent'}
+        return {"status": "sent"}
 
-    @bp.route('/stats', methods=['GET'])
+    @bp.route("/stats", methods=["GET"])
     def stats():
         """Get streaming statistics"""
         return manager.get_stats()
 
-    @bp.route('/clients', methods=['GET'])
+    @bp.route("/clients", methods=["GET"])
     def list_clients():
         """List connected clients"""
         with manager.lock:
@@ -361,7 +380,7 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
                 if info:
                     clients.append(info)
 
-            return {'clients': clients, 'count': len(clients)}
+            return {"clients": clients, "count": len(clients)}
 
     return bp
 
@@ -370,13 +389,13 @@ def create_sse_blueprint(manager: SSEManager) -> Blueprint:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from flask import Flask
     import threading
 
-    print("="*70)
+    print("=" * 70)
     print("📡 Server-Sent Events Test")
-    print("="*70)
+    print("=" * 70)
 
     app = Flask(__name__)
 
@@ -392,9 +411,9 @@ if __name__ == '__main__':
         time.sleep(2)  # Wait for server to start
 
         events = [
-            ('message_received', {'from': 'code', 'text': 'Hello world'}),
-            ('notification', {'type': 'info', 'message': 'System update available'}),
-            ('error', {'code': 500, 'message': 'Something went wrong'}),
+            ("message_received", {"from": "code", "text": "Hello world"}),
+            ("notification", {"type": "info", "message": "System update available"}),
+            ("error", {"code": 500, "message": "Something went wrong"}),
         ]
 
         for i in range(3):
@@ -419,12 +438,14 @@ if __name__ == '__main__':
     print("   curl http://localhost:8080/stream/events?client_id=test-1")
     print("")
     print("   # Subscribe to specific events")
-    print("   curl http://localhost:8080/stream/events?subscribe=message_received,notification")
+    print(
+        "   curl http://localhost:8080/stream/events?subscribe=message_received,notification"
+    )
     print("")
     print("   # Broadcast")
     print("   curl -X POST http://localhost:8080/stream/broadcast \\")
     print("        -H 'Content-Type: application/json' \\")
-    print("        -d '{\"event\": \"test\", \"data\": {\"msg\": \"hello\"}}'")
+    print('        -d \'{"event": "test", "data": {"msg": "hello"}}\'')
 
     print("\n🚀 Starting server on http://localhost:8080")
     print("   Press Ctrl+C to stop")

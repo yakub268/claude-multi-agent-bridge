@@ -14,7 +14,7 @@ def test_amendment_persists_to_database():
     """Test that amendment acceptance updates decision text in DB"""
 
     # Create temp database
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     try:
@@ -28,13 +28,12 @@ def test_amendment_persists_to_database():
 
         # Propose decision
         decision_id = room.propose_decision(
-            "alice",
-            "Use MongoDB for storage",
-            VoteType.SIMPLE_MAJORITY
+            "alice", "Use MongoDB for storage", VoteType.SIMPLE_MAJORITY
         )
 
         # Verify original text in database
         import sqlite3
+
         conn = sqlite3.connect(db_path)
         cursor = conn.execute("SELECT text FROM decisions WHERE id = ?", (decision_id,))
         original_text = cursor.fetchone()[0]
@@ -47,7 +46,7 @@ def test_amendment_persists_to_database():
         amendment_id = room.propose_amendment(
             from_client="alice",
             decision_id=decision_id,
-            amendment_text="Use PostgreSQL for ACID compliance"
+            amendment_text="Use PostgreSQL for ACID compliance",
         )
 
         # Accept amendment
@@ -76,5 +75,5 @@ def test_amendment_persists_to_database():
             os.unlink(db_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_amendment_persists_to_database()

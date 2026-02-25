@@ -9,8 +9,10 @@ from datetime import datetime, timezone
 
 # Import modules
 from collaboration_enhanced import (
-    EnhancedCollaborationRoom, RoomMember, VoteType,
-    CodeLanguage
+    EnhancedCollaborationRoom,
+    RoomMember,
+    VoteType,
+    CodeLanguage,
 )
 from ai_summarization import AISummarizer
 from message_threading import MessageThreading
@@ -81,7 +83,9 @@ def main():
 
     print_step(4, "Sending messages to different channels...")
     room.send_message("claude-code", "Let's start with the API design", channel="main")
-    room.send_message("claude-desktop-1", "I'll handle the FastAPI endpoints", channel=code_ch)
+    room.send_message(
+        "claude-desktop-1", "I'll handle the FastAPI endpoints", channel=code_ch
+    )
     room.send_message("claude-browser", "Setting up integration tests", channel=test_ch)
     room.send_message("claude-desktop-2", "Found a race condition", channel=bugs_ch)
     print("   ✅ 4 messages sent across different channels")
@@ -95,7 +99,7 @@ def main():
     dec1_id = room.propose_decision(
         "claude-code",
         "Use FastAPI for backend framework",
-        vote_type=VoteType.SIMPLE_MAJORITY
+        vote_type=VoteType.SIMPLE_MAJORITY,
     )
     print(f"   ✅ Decision proposed: {dec1_id}")
     print("   Vote type: simple_majority")
@@ -111,9 +115,7 @@ def main():
 
     print_step(6, "Consensus Vote: Delete production database")
     dec2_id = room.propose_decision(
-        "claude-code",
-        "Delete production database",
-        vote_type=VoteType.CONSENSUS
+        "claude-code", "Delete production database", vote_type=VoteType.CONSENSUS
     )
     print(f"   ✅ Decision proposed: {dec2_id}")
     print("   Vote type: consensus (requires 100%)")
@@ -124,13 +126,13 @@ def main():
 
     dec2 = [d for d in room.decisions if d.id == dec2_id][0]
     print("   ✅ Votes: 2 yes, 1 no")
-    print(f"   Result: {'✅ APPROVED' if dec2.approved else '❌ REJECTED (consensus requires 100%)'}")
+    print(
+        f"   Result: {'✅ APPROVED' if dec2.approved else '❌ REJECTED (consensus requires 100%)'}"
+    )
 
     print_step(7, "Veto Power: Deploy to production now")
     dec3_id = room.propose_decision(
-        "claude-code",
-        "Deploy to production now",
-        vote_type=VoteType.SIMPLE_MAJORITY
+        "claude-code", "Deploy to production now", vote_type=VoteType.SIMPLE_MAJORITY
     )
 
     room.vote(dec3_id, "claude-desktop-1", approve=True)
@@ -148,14 +150,10 @@ def main():
     print_banner("PHASE 4: FILE SHARING")
 
     print_step(8, "Uploading Python strategy file...")
-    test_code = b'def calculate_rsi(prices, period=14):\n    return 50.0\n'
+    test_code = b"def calculate_rsi(prices, period=14):\n    return 50.0\n"
 
     file_id = room.upload_file(
-        "claude-desktop-1",
-        "strategy.py",
-        test_code,
-        "text/x-python",
-        channel=code_ch
+        "claude-desktop-1", "strategy.py", test_code, "text/x-python", channel=code_ch
     )
     print(f"   ✅ File uploaded: strategy.py ({file_id})")
     print(f"   Size: {len(test_code)} bytes")
@@ -168,24 +166,21 @@ def main():
     print_banner("PHASE 5: CODE EXECUTION")
 
     print_step(9, "Executing Python code collaboratively...")
-    code = '''
+    code = """
 prices = [100, 102, 101, 103, 105, 104, 106, 108]
 print(f"Testing RSI with {len(prices)} prices")
 print(f"Latest: ${prices[-1]}")
 print(f"Range: ${min(prices)}-${max(prices)}")
-'''
+"""
 
     result = room.execute_code(
-        "claude-desktop-1",
-        code,
-        CodeLanguage.PYTHON,
-        channel=code_ch
+        "claude-desktop-1", code, CodeLanguage.PYTHON, channel=code_ch
     )
     print("   ✅ Code executed successfully")
     print(f"   Exit code: {result.exit_code}")
     print(f"   Execution time: {result.execution_time_ms:.1f}ms")
     print("   Output:")
-    for line in result.output.strip().split('\n'):
+    for line in result.output.strip().split("\n"):
         print(f"      {line}")
 
     # ========================================================================
@@ -196,12 +191,47 @@ print(f"Range: ${min(prices)}-${max(prices)}")
     print_step(10, "Building threaded conversation...")
     threading = MessageThreading()
 
-    threading.add_message("msg-1", "claude-code", "Should we add WebSocket support?", "2026-02-22T10:00:00Z")
-    threading.add_message("msg-2", "claude-desktop-1", "Yes! Real-time updates", "2026-02-22T10:01:00Z", reply_to="msg-1")
-    threading.add_message("msg-3", "claude-desktop-2", "Agreed. Flask-Sock?", "2026-02-22T10:02:00Z", reply_to="msg-2")
-    threading.add_message("msg-4", "claude-browser", "Flask-Sock is simpler", "2026-02-22T10:03:00Z", reply_to="msg-3")
-    threading.add_message("msg-5", "claude-code", "Backwards compatibility?", "2026-02-22T10:04:00Z", reply_to="msg-1")
-    threading.add_message("msg-6", "claude-mobile", "Keep REST alongside WebSocket", "2026-02-22T10:05:00Z", reply_to="msg-5")
+    threading.add_message(
+        "msg-1",
+        "claude-code",
+        "Should we add WebSocket support?",
+        "2026-02-22T10:00:00Z",
+    )
+    threading.add_message(
+        "msg-2",
+        "claude-desktop-1",
+        "Yes! Real-time updates",
+        "2026-02-22T10:01:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-3",
+        "claude-desktop-2",
+        "Agreed. Flask-Sock?",
+        "2026-02-22T10:02:00Z",
+        reply_to="msg-2",
+    )
+    threading.add_message(
+        "msg-4",
+        "claude-browser",
+        "Flask-Sock is simpler",
+        "2026-02-22T10:03:00Z",
+        reply_to="msg-3",
+    )
+    threading.add_message(
+        "msg-5",
+        "claude-code",
+        "Backwards compatibility?",
+        "2026-02-22T10:04:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-6",
+        "claude-mobile",
+        "Keep REST alongside WebSocket",
+        "2026-02-22T10:05:00Z",
+        reply_to="msg-5",
+    )
 
     thread = threading.get_thread("msg-1")
     print(threading.visualize_thread(thread.thread_id, max_text_length=35))
@@ -222,7 +252,7 @@ print(f"Range: ${min(prices)}-${max(prices)}")
 
     messages = threading.get_thread_messages("msg-1")
     message_dicts = [
-        {'from_client': m.from_client, 'text': m.text, 'timestamp': m.timestamp}
+        {"from_client": m.from_client, "text": m.text, "timestamp": m.timestamp}
         for m in messages
     ]
 
@@ -275,7 +305,7 @@ print(f"Range: ${min(prices)}-${max(prices)}")
     print("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
@@ -283,4 +313,5 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n\n❌ Demo error: {e}")
         import traceback
+
         traceback.print_exc()

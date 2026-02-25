@@ -38,8 +38,7 @@ class RateLimiter:
 
         # Clean old requests
         self.buckets[client_id] = [
-            timestamp for timestamp in self.buckets[client_id]
-            if timestamp > minute_ago
+            timestamp for timestamp in self.buckets[client_id] if timestamp > minute_ago
         ]
 
         # Check limit
@@ -75,16 +74,20 @@ class TokenAuth:
         """Load tokens from disk"""
         if os.path.exists(self.token_file):
             try:
-                with open(self.token_file, 'r') as f:
+                with open(self.token_file, "r") as f:
                     data = json.load(f)
                     # Convert datetime strings back to objects
-                    for token, token_data in data.get('tokens', {}).items():
+                    for token, token_data in data.get("tokens", {}).items():
                         self.tokens[token] = {
-                            'client_id': token_data['client_id'],
-                            'created_at': datetime.fromisoformat(token_data['created_at']),
-                            'expires_at': datetime.fromisoformat(token_data['expires_at'])
+                            "client_id": token_data["client_id"],
+                            "created_at": datetime.fromisoformat(
+                                token_data["created_at"]
+                            ),
+                            "expires_at": datetime.fromisoformat(
+                                token_data["expires_at"]
+                            ),
                         }
-                    self.revoked = set(data.get('revoked', []))
+                    self.revoked = set(data.get("revoked", []))
                 logger.info(f"Loaded {len(self.tokens)} tokens from {self.token_file}")
             except Exception as e:
                 logger.error(f"Failed to load tokens: {e}")
@@ -93,17 +96,17 @@ class TokenAuth:
         """Save tokens to disk"""
         try:
             data = {
-                'tokens': {
+                "tokens": {
                     token: {
-                        'client_id': token_data['client_id'],
-                        'created_at': token_data['created_at'].isoformat(),
-                        'expires_at': token_data['expires_at'].isoformat()
+                        "client_id": token_data["client_id"],
+                        "created_at": token_data["created_at"].isoformat(),
+                        "expires_at": token_data["expires_at"].isoformat(),
                     }
                     for token, token_data in self.tokens.items()
                 },
-                'revoked': list(self.revoked)
+                "revoked": list(self.revoked),
             }
-            with open(self.token_file, 'w') as f:
+            with open(self.token_file, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save tokens: {e}")
@@ -112,9 +115,9 @@ class TokenAuth:
         """Generate new API token"""
         token = secrets.token_urlsafe(32)
         self.tokens[token] = {
-            'client_id': client_id,
-            'created_at': datetime.now(),
-            'expires_at': datetime.now() + timedelta(hours=expires_hours)
+            "client_id": client_id,
+            "created_at": datetime.now(),
+            "expires_at": datetime.now() + timedelta(hours=expires_hours),
         }
 
         # Persist to disk
@@ -134,11 +137,11 @@ class TokenAuth:
             return None
 
         # Check expiration
-        if datetime.now() > token_data['expires_at']:
+        if datetime.now() > token_data["expires_at"]:
             logger.warning(f"Token expired for {token_data['client_id']}")
             return None
 
-        return token_data['client_id']
+        return token_data["client_id"]
 
     def revoke_token(self, token: str) -> bool:
         """Revoke a token"""
@@ -153,8 +156,7 @@ class TokenAuth:
         """Remove expired tokens from storage"""
         now = datetime.now()
         expired = [
-            token for token, data in self.tokens.items()
-            if now > data['expires_at']
+            token for token, data in self.tokens.items() if now > data["expires_at"]
         ]
 
         for token in expired:
@@ -167,7 +169,7 @@ class TokenAuth:
 
 
 # Test
-if __name__ == '__main__':
+if __name__ == "__main__":
     auth = TokenAuth()
     token = auth.generate_token("claude-code")
     print(f"Token: {token[:20]}...")

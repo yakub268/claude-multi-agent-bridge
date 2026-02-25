@@ -7,11 +7,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def create_gif():
     """Create demo GIF by recording the demo script"""
-    print("="*70)
+    print("=" * 70)
     print("🎬 CREATING DEMO GIF")
-    print("="*70)
+    print("=" * 70)
     print()
 
     # Instructions
@@ -36,16 +37,16 @@ def create_gif():
     time.sleep(3)
 
     # Run the demo script
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Running demo script...")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     subprocess.run([sys.executable, "demo_script.py"])
 
     print()
-    print("="*70)
+    print("=" * 70)
     print("Demo complete!")
-    print("="*70)
+    print("=" * 70)
     print()
     print("TO CREATE GIF:")
     print("  1. Use OBS Studio / ShareX / Windows Game Bar to record")
@@ -56,5 +57,6 @@ def create_gif():
     print("  Use Windows Snipping Tool in video mode (Win+Shift+S)")
     print()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     create_gif()

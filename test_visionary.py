@@ -12,14 +12,14 @@ async def test_visionary_vs_devils_advocate():
     Test: Visionary (dreamer) vs Devil's Advocate (critic)
     Both are extremes - one finds opportunities, one finds risks
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🌟 VISIONARY vs 😈 DEVIL'S ADVOCATE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
     print("Roles:")
     print("  🌟 VISIONARY: Dreams big, sees possibilities, 10x thinking")
     print("  😈 DEVIL'S ADVOCATE: Finds flaws, sees risks, cautious thinking")
     print("  🎯 PRAGMATISTS: Balanced, grounded, realistic thinking")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     visionary = ThinkTankClient("claude-visionary", "researcher")
@@ -30,9 +30,11 @@ async def test_visionary_vs_devils_advocate():
     try:
         # Connect
         await asyncio.gather(
-            coordinator.connect(), visionary.connect(),
-            devils_advocate.connect(), pragmatist1.connect(),
-            pragmatist2.connect()
+            coordinator.connect(),
+            visionary.connect(),
+            devils_advocate.connect(),
+            pragmatist1.connect(),
+            pragmatist2.connect(),
         )
         print("✅ 5 Claude instances connected\n")
 
@@ -41,7 +43,7 @@ async def test_visionary_vs_devils_advocate():
             visionary.join_room(room_id),
             devils_advocate.join_room(room_id),
             pragmatist1.join_room(room_id),
-            pragmatist2.join_room(room_id)
+            pragmatist2.join_room(room_id),
         )
         await asyncio.sleep(0.5)
 
@@ -53,8 +55,10 @@ async def test_visionary_vs_devils_advocate():
         )
         print(f"   Coordinator: {proposal}\n")
 
-        decision = await coordinator.propose_decision(proposal, vote_type="simple_majority")
-        decision_id = decision['decision_id']
+        decision = await coordinator.propose_decision(
+            proposal, vote_type="simple_majority"
+        )
+        decision_id = decision["decision_id"]
         await asyncio.sleep(0.5)
 
         print("💬 REACTIONS FROM DIFFERENT PERSONAS:\n")
@@ -73,9 +77,7 @@ async def test_visionary_vs_devils_advocate():
             "What if this becomes our core product in 3 years? Let's think 10x!"
         )
         print(f"   {visionary_response[:200]}...")
-        await visionary.add_debate_argument(
-            decision_id, "pro", visionary_response
-        )
+        await visionary.add_debate_argument(decision_id, "pro", visionary_response)
         await asyncio.sleep(0.3)
 
         # Devil's Advocate - finds all the risks
@@ -110,15 +112,13 @@ async def test_visionary_vs_devils_advocate():
             "• This way we test assumptions before big bet"
         )
         print(f"   {pragmatist1_response[:200]}...")
-        await pragmatist1.add_debate_argument(
-            decision_id, "pro", pragmatist1_response
-        )
+        await pragmatist1.add_debate_argument(decision_id, "pro", pragmatist1_response)
         await asyncio.sleep(0.5)
 
         # Summary
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("📊 DEBATE SUMMARY")
-        print("="*80)
+        print("=" * 80)
         print("\n🌟 VISIONARY:")
         print("   ✨ Expands scope 100x ($50k → $5M platform)")
         print("   ✨ Sees new revenue streams (license to others)")
@@ -145,10 +145,12 @@ async def test_visionary_vs_devils_advocate():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), visionary.close(),
-            devils_advocate.close(), pragmatist1.close(),
+            coordinator.close(),
+            visionary.close(),
+            devils_advocate.close(),
+            pragmatist1.close(),
             pragmatist2.close(),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
 
@@ -156,9 +158,9 @@ async def test_visionary_transforms_rejection():
     """
     Test: Can visionary turn a rejection into an opportunity?
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🌟 TEST: VISIONARY TRANSFORMS REJECTION INTO OPPORTUNITY")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     realist = ThinkTankClient("claude-realist", "reviewer")
@@ -171,10 +173,7 @@ async def test_visionary_transforms_rejection():
         print("✅ 3 Claude instances connected\n")
 
         room_id = await coordinator.create_room("Failed Proposal Revival")
-        await asyncio.gather(
-            realist.join_room(room_id),
-            visionary.join_room(room_id)
-        )
+        await asyncio.gather(realist.join_room(room_id), visionary.join_room(room_id))
         await asyncio.sleep(0.3)
 
         # Initial proposal (will be rejected)
@@ -183,16 +182,18 @@ async def test_visionary_transforms_rejection():
         print(f"   {proposal}\n")
 
         decision = await coordinator.propose_decision(proposal)
-        decision_id = decision['decision_id']
+        decision_id = decision["decision_id"]
         await asyncio.sleep(0.3)
 
         # Realist rejects
         print("❌ REALIST REJECTS:")
-        print("   'Too expensive. Customers will churn. We have no premium features to justify 5x price.'\n")
+        print(
+            "   'Too expensive. Customers will churn. We have no premium features to justify 5x price.'\n"
+        )
         await realist.send_critique(
             decision_id,
             "Too expensive. Customers will churn. We have no premium features to justify 5x price.",
-            severity="blocking"
+            severity="blocking",
         )
         await asyncio.sleep(0.5)
 
@@ -219,13 +220,13 @@ async def test_visionary_transforms_rejection():
         await visionary.propose_alternative(
             decision_id,
             "Don't just raise price - BUILD premium tier with 10x value: AI analytics, white-label, "
-            "API, dedicated support. Target enterprise customers at $199/mo."
+            "API, dedicated support. Target enterprise customers at $199/mo.",
         )
         await asyncio.sleep(0.5)
 
-        print("="*80)
+        print("=" * 80)
         print("📊 TRANSFORMATION ANALYSIS")
-        print("="*80)
+        print("=" * 80)
         print("\n❌ ORIGINAL (Rejected):")
         print("   'Charge 5x more for same product'")
         print("   → Doomed to fail")
@@ -255,9 +256,9 @@ async def test_balanced_team():
     """
     Test: Ideal team composition with both extremes
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("⚖️  IDEAL TEAM: VISIONARY + DEVIL'S ADVOCATE + PRAGMATISTS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     coordinator = ThinkTankClient("claude-coordinator", "coordinator")
     visionary = ThinkTankClient("claude-visionary", "researcher")
@@ -267,9 +268,11 @@ async def test_balanced_team():
 
     try:
         await asyncio.gather(
-            coordinator.connect(), visionary.connect(),
-            devils_advocate.connect(), builder.connect(),
-            executor.connect()
+            coordinator.connect(),
+            visionary.connect(),
+            devils_advocate.connect(),
+            builder.connect(),
+            executor.connect(),
         )
         print("✅ 5 Claude instances connected\n")
         print("Team Composition:")
@@ -284,7 +287,7 @@ async def test_balanced_team():
             visionary.join_room(room_id),
             devils_advocate.join_room(room_id),
             builder.join_room(room_id),
-            executor.join_room(room_id)
+            executor.join_room(room_id),
         )
         await asyncio.sleep(0.3)
 
@@ -292,7 +295,7 @@ async def test_balanced_team():
         decision = await coordinator.propose_decision(
             "Build mobile app (iOS + Android). Estimated 6 months, $300k cost."
         )
-        decision_id = decision['decision_id']
+        decision_id = decision["decision_id"]
         await asyncio.sleep(0.5)
 
         print("💬 TEAM DISCUSSION:\n")
@@ -304,10 +307,11 @@ async def test_balanced_team():
         print("   'Native experience → app store featuring → millions of downloads'")
         print("   'What if mobile becomes our PRIMARY platform?'\n")
         await visionary.add_debate_argument(
-            decision_id, "pro",
+            decision_id,
+            "pro",
             "Mobile is our FUTURE. Push notifications = 10x engagement. "
             "App store featuring could bring millions of users. "
-            "This isn't just a feature - it's a strategic platform shift."
+            "This isn't just a feature - it's a strategic platform shift.",
         )
         await asyncio.sleep(0.2)
 
@@ -322,7 +326,7 @@ async def test_balanced_team():
             "Mobile usage is only 5% of our traffic. $300k for 5% of users = poor ROI. "
             "Maintaining iOS + Android = 2x ongoing cost forever. "
             "Progressive Web App (PWA) gives 90% of benefits for 10% of cost.",
-            severity="major"
+            severity="major",
         )
         await asyncio.sleep(0.2)
 
@@ -332,10 +336,11 @@ async def test_balanced_team():
         print("   'PWA gives us push notifications + offline support'")
         print("   'Test mobile engagement FIRST, then go native if needed'\n")
         await builder.add_debate_argument(
-            decision_id, "con",
+            decision_id,
+            "con",
             "PWA is faster path (1 month vs 6). Gives push notifications and offline support. "
             "We can test mobile engagement assumptions before committing to native. "
-            "If PWA proves mobile demand, THEN invest in native."
+            "If PWA proves mobile demand, THEN invest in native.",
         )
         await asyncio.sleep(0.2)
 
@@ -346,16 +351,17 @@ async def test_balanced_team():
         print("   'Month 3: If >20% mobile usage, start iOS'")
         print("   'Month 6: If iOS successful, start Android'\n")
         await executor.add_debate_argument(
-            decision_id, "pro",
+            decision_id,
+            "pro",
             "Phased rollout de-risks: PWA first (1 month), measure mobile engagement. "
             "If >20% mobile traffic, build iOS (3 months). If iOS proves value, add Android. "
-            "Each phase validates assumptions before next investment."
+            "Each phase validates assumptions before next investment.",
         )
         await asyncio.sleep(0.5)
 
-        print("="*80)
+        print("=" * 80)
         print("📊 SYNTHESIS")
-        print("="*80)
+        print("=" * 80)
         print("\n🌟 VISIONARY contributed:")
         print("   ✨ Big vision (mobile as primary platform)")
         print("   ✨ Long-term strategic thinking")
@@ -381,7 +387,9 @@ async def test_balanced_team():
         print("   ✅ Phase 2: IF >20% mobile → iOS (3 months, $150k)")
         print("   ✅ Phase 3: IF iOS successful → Android (3 months, $150k)")
         print("\n   Total: Still $300k potential, but VALIDATED at each step")
-        print("   Combines: Visionary ambition + Devil's advocate caution + Builder practicality + Executor planning")
+        print(
+            "   Combines: Visionary ambition + Devil's advocate caution + Builder practicality + Executor planning"
+        )
 
         print("\n💡 KEY LESSON:")
         print("   Best decisions need BOTH extremes:")
@@ -392,23 +400,25 @@ async def test_balanced_team():
 
     finally:
         await asyncio.gather(
-            coordinator.close(), visionary.close(),
-            devils_advocate.close(), builder.close(),
+            coordinator.close(),
+            visionary.close(),
+            devils_advocate.close(),
+            builder.close(),
             executor.close(),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
 
 async def main():
     """Run all visionary tests"""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🌟 VISIONARY AGENT ANALYSIS")
-    print("="*80)
+    print("=" * 80)
     print("\nThe Opposite of Devil's Advocate:")
     print("  😈 Devil's Advocate: Finds risks, prevents disasters")
     print("  🌟 Visionary: Finds opportunities, inspires ambition")
     print("\nBoth extremes are valuable!")
-    print("="*80)
+    print("=" * 80)
 
     await test_visionary_vs_devils_advocate()
     await asyncio.sleep(2)
@@ -419,9 +429,9 @@ async def main():
     await test_balanced_team()
 
     # Final insights
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🎓 KEY INSIGHTS")
-    print("="*80)
+    print("=" * 80)
     print("\n1. VISIONARY IS NOT 'BLIND OPTIMISM'")
     print("   ❌ Bad visionary: Ignores reality, unrealistic")
     print("   ✅ Good visionary: Sees possibilities, transforms constraints\n")
@@ -434,7 +444,9 @@ async def main():
     print("3. ROLE OF VISIONARY:")
     print("   ✨ Expands scope (thinks bigger)")
     print("   ✨ Sees secondary opportunities (new revenue streams)")
-    print("   ✨ Transforms rejections ('You're right... so let's build what WILL work')")
+    print(
+        "   ✨ Transforms rejections ('You're right... so let's build what WILL work')"
+    )
     print("   ✨ Pushes team beyond incremental thinking\n")
 
     print("4. WHEN YOU NEED A VISIONARY:")
@@ -463,10 +475,10 @@ async def main():
     print("   • Too many devil's advocates → Paralysis, no innovation")
     print("   • Balance = Ambitious goals + smart risk management")
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

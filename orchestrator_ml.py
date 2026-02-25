@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class ClaudeModel(Enum):
     """Claude model selection"""
+
     HAIKU = "haiku"  # Fast, cheap for simple tasks
     SONNET = "sonnet"  # Balanced for most coding
     OPUS = "opus"  # Best for complex reasoning
@@ -31,6 +32,7 @@ class ClaudeModel(Enum):
 
 class CollabStrategy(Enum):
     """Collaboration strategy"""
+
     SINGLE_CLAUDE = "single"  # No collaboration needed
     AGENTS = "agents"  # Use Task tool with subagents
     BRIDGE_SMALL = "bridge_small"  # 2-3 Claudes
@@ -41,6 +43,7 @@ class CollabStrategy(Enum):
 
 class TaskComplexity(Enum):
     """Task complexity levels"""
+
     TRIVIAL = 1  # Single file, <50 LOC
     SIMPLE = 2  # Single file, 50-200 LOC
     MEDIUM = 3  # 2-5 files, 200-500 LOC
@@ -54,6 +57,7 @@ class TaskComplexity(Enum):
 @dataclass
 class TaskFeatures:
     """Features extracted from task for ML model"""
+
     # Code metrics
     estimated_files: int
     estimated_loc: int
@@ -83,6 +87,7 @@ class TaskFeatures:
 @dataclass
 class RoleAssignment:
     """Role for a Claude in the team"""
+
     role: str
     client_id: str
     model: ClaudeModel  # Which model to use
@@ -95,6 +100,7 @@ class RoleAssignment:
 @dataclass
 class CollaborationPlan:
     """Complete collaboration plan"""
+
     strategy: CollabStrategy
     num_agents: int
     num_claudes: int
@@ -133,24 +139,23 @@ class MLOrchestrator:
         # In production, load from file
         # For now, use calibrated defaults based on heuristics
         return {
-            'complexity_threshold_agents': 3,
-            'complexity_threshold_bridge': 5,
-            'files_threshold_bridge': 15,
-            'context_threshold_bridge': 100000,
-            'parallelization_threshold': 0.6,
-
+            "complexity_threshold_agents": 3,
+            "complexity_threshold_bridge": 5,
+            "files_threshold_bridge": 15,
+            "context_threshold_bridge": 100000,
+            "parallelization_threshold": 0.6,
             # Team size calculation
-            'base_team_size': 2,
-            'files_per_claude': 10,
-            'max_team_size': 8,
-
+            "base_team_size": 2,
+            "files_per_claude": 10,
+            "max_team_size": 8,
             # Cost weights
-            'cost_per_claude_hour': 2.0,  # Approximate API cost
-            'cost_agent_vs_claude': 0.3,  # Agents are cheaper
+            "cost_per_claude_hour": 2.0,  # Approximate API cost
+            "cost_agent_vs_claude": 0.3,  # Agents are cheaper
         }
 
-    def analyze_task(self, task_description: str,
-                    code_context: Optional[Dict] = None) -> TaskFeatures:
+    def analyze_task(
+        self, task_description: str, code_context: Optional[Dict] = None
+    ) -> TaskFeatures:
         """
         Analyze task and extract features
 
@@ -163,12 +168,12 @@ class MLOrchestrator:
         """
         # Extract features from description
         keywords = {
-            'trivial': ['fix typo', 'update comment', 'rename variable'],
-            'simple': ['add function', 'fix bug', 'update config'],
-            'medium': ['add feature', 'refactor module', 'implement api'],
-            'complex': ['build system', 'integrate service', 'migrate database'],
-            'large': ['build application', 'redesign architecture'],
-            'massive': ['build platform', 'rebuild system']
+            "trivial": ["fix typo", "update comment", "rename variable"],
+            "simple": ["add function", "fix bug", "update config"],
+            "medium": ["add feature", "refactor module", "implement api"],
+            "complex": ["build system", "integrate service", "migrate database"],
+            "large": ["build application", "redesign architecture"],
+            "massive": ["build platform", "rebuild system"],
         }
 
         # Detect complexity from keywords
@@ -176,37 +181,55 @@ class MLOrchestrator:
         for level, words in keywords.items():
             if any(word in task_description.lower() for word in words):
                 complexity_score = {
-                    'trivial': 1, 'simple': 2, 'medium': 3,
-                    'complex': 4, 'large': 6, 'massive': 8
+                    "trivial": 1,
+                    "simple": 2,
+                    "medium": 3,
+                    "complex": 4,
+                    "large": 6,
+                    "massive": 8,
                 }[level]
                 break
 
         # Count mentioned files
-        file_mentions = len(re.findall(r'\b\w+\.(py|js|ts|java|cpp|rs|go|rb)\b',
-                                       task_description, re.I))
+        file_mentions = len(
+            re.findall(r"\b\w+\.(py|js|ts|java|cpp|rs|go|rb)\b", task_description, re.I)
+        )
 
         # Detect parallelization potential
-        parallel_keywords = ['parallel', 'concurrent', 'independent', 'separate',
-                           'multiple', 'each', 'simultaneously']
-        parallelization_score = min(1.0,
-            sum(0.2 for kw in parallel_keywords if kw in task_description.lower()))
+        parallel_keywords = [
+            "parallel",
+            "concurrent",
+            "independent",
+            "separate",
+            "multiple",
+            "each",
+            "simultaneously",
+        ]
+        parallelization_score = min(
+            1.0, sum(0.2 for kw in parallel_keywords if kw in task_description.lower())
+        )
 
         # Detect subtasks
-        subtask_markers = re.findall(r'(?:^|\n)\s*[\-\*\d\.]+\s+', task_description)
+        subtask_markers = re.findall(r"(?:^|\n)\s*[\-\*\d\.]+\s+", task_description)
         num_subtasks = max(len(subtask_markers), 1)
 
         # Detect need for voting/review
-        needs_voting = any(kw in task_description.lower()
-                          for kw in ['decide', 'vote', 'consensus', 'approve'])
-        needs_review = any(kw in task_description.lower()
-                          for kw in ['review', 'verify', 'validate', 'check'])
-        needs_testing = any(kw in task_description.lower()
-                           for kw in ['test', 'qa', 'testing'])
+        needs_voting = any(
+            kw in task_description.lower()
+            for kw in ["decide", "vote", "consensus", "approve"]
+        )
+        needs_review = any(
+            kw in task_description.lower()
+            for kw in ["review", "verify", "validate", "check"]
+        )
+        needs_testing = any(
+            kw in task_description.lower() for kw in ["test", "qa", "testing"]
+        )
 
         # Estimate metrics
         if code_context:
-            estimated_files = code_context.get('file_count', file_mentions * 3)
-            estimated_loc = code_context.get('loc', estimated_files * 100)
+            estimated_files = code_context.get("file_count", file_mentions * 3)
+            estimated_loc = code_context.get("loc", estimated_files * 100)
         else:
             estimated_files = max(file_mentions * 3, complexity_score * 5)
             estimated_loc = estimated_files * 100
@@ -215,20 +238,18 @@ class MLOrchestrator:
         estimated_context_tokens = estimated_loc * 2  # Rough estimate
 
         # Duration estimation (very rough)
-        base_hours = {
-            1: 0.5, 2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32, 8: 64
-        }
+        base_hours = {1: 0.5, 2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32, 8: 64}
         estimated_hours = base_hours.get(complexity_score, 4)
 
         # Detect domain
         domain_keywords = {
-            'web': ['web', 'frontend', 'backend', 'api', 'http', 'html', 'css'],
-            'ml': ['machine learning', 'model', 'training', 'neural', 'ai'],
-            'data': ['data', 'analysis', 'pipeline', 'etl', 'database'],
-            'systems': ['system', 'performance', 'infrastructure', 'devops'],
-            'mobile': ['mobile', 'android', 'ios', 'app']
+            "web": ["web", "frontend", "backend", "api", "http", "html", "css"],
+            "ml": ["machine learning", "model", "training", "neural", "ai"],
+            "data": ["data", "analysis", "pipeline", "etl", "database"],
+            "systems": ["system", "performance", "infrastructure", "devops"],
+            "mobile": ["mobile", "android", "ios", "app"],
         }
-        domain = 'general'
+        domain = "general"
         for dom, keywords_list in domain_keywords.items():
             if any(kw in task_description.lower() for kw in keywords_list):
                 domain = dom
@@ -237,7 +258,7 @@ class MLOrchestrator:
         return TaskFeatures(
             estimated_files=estimated_files,
             estimated_loc=estimated_loc,
-            file_types=['py', 'js', 'md'],  # Default
+            file_types=["py", "js", "md"],  # Default
             num_subtasks=num_subtasks,
             parallelization_score=parallelization_score,
             dependency_depth=min(num_subtasks, 3),
@@ -247,7 +268,7 @@ class MLOrchestrator:
             needs_voting=needs_voting,
             needs_code_review=needs_review,
             needs_testing=needs_testing,
-            domain=domain
+            domain=domain,
         )
 
     def predict_strategy(self, features: TaskFeatures) -> CollabStrategy:
@@ -265,9 +286,11 @@ class MLOrchestrator:
             return CollabStrategy.SINGLE_CLAUDE
 
         # Check if agents can handle it
-        if (features.estimated_files <= w['files_threshold_bridge'] and
-            features.estimated_context_tokens < w['context_threshold_bridge'] and
-            features.estimated_hours < 2):
+        if (
+            features.estimated_files <= w["files_threshold_bridge"]
+            and features.estimated_context_tokens < w["context_threshold_bridge"]
+            and features.estimated_hours < 2
+        ):
             return CollabStrategy.AGENTS
 
         # Bridge required - determine size
@@ -278,8 +301,9 @@ class MLOrchestrator:
         else:
             return CollabStrategy.BRIDGE_LARGE
 
-    def calculate_team_size(self, features: TaskFeatures,
-                           strategy: CollabStrategy) -> Tuple[int, int]:
+    def calculate_team_size(
+        self, features: TaskFeatures, strategy: CollabStrategy
+    ) -> Tuple[int, int]:
         """
         Calculate optimal number of agents/claudes
 
@@ -294,20 +318,21 @@ class MLOrchestrator:
         elif strategy == CollabStrategy.AGENTS:
             # Scale agents by parallelization potential
             base_agents = min(features.num_subtasks, 5)
-            num_agents = max(2, int(base_agents * (0.5 + features.parallelization_score)))
+            num_agents = max(
+                2, int(base_agents * (0.5 + features.parallelization_score))
+            )
             return (num_agents, 1)
 
         else:  # Bridge
             # Calculate based on files and parallelization
-            files_per_claude = w['files_per_claude']
-            num_claudes = max(2, min(
-                features.estimated_files // files_per_claude,
-                w['max_team_size']
-            ))
+            files_per_claude = w["files_per_claude"]
+            num_claudes = max(
+                2, min(features.estimated_files // files_per_claude, w["max_team_size"])
+            )
 
             # Adjust by parallelization score
             if features.parallelization_score > 0.7:
-                num_claudes = min(num_claudes + 1, w['max_team_size'])
+                num_claudes = min(num_claudes + 1, w["max_team_size"])
 
             # Strategy-specific sizing
             if strategy == CollabStrategy.BRIDGE_SMALL:
@@ -390,7 +415,7 @@ class MLOrchestrator:
             # Use planning mode if:
             return (
                 features.estimated_files > 15  # Large project
-                or features.num_subtasks > 8   # Complex breakdown
+                or features.num_subtasks > 8  # Complex breakdown
                 or features.dependency_depth > 3  # Deep dependencies
                 or features.estimated_hours > 4  # Long task
             )
@@ -410,7 +435,9 @@ class MLOrchestrator:
 
         return False
 
-    def assign_roles(self, features: TaskFeatures, num_claudes: int) -> List[RoleAssignment]:
+    def assign_roles(
+        self, features: TaskFeatures, num_claudes: int
+    ) -> List[RoleAssignment]:
         """
         Assign roles to team members based on task needs
         Now includes model selection and planning mode decision
@@ -421,30 +448,34 @@ class MLOrchestrator:
             model = self.select_model("coordinator", features)
             use_planning = self.should_use_planning_mode("coordinator", features)
 
-            roles.append(RoleAssignment(
-                role="coordinator",
-                client_id="claude-main",
-                model=model,
-                vote_weight=2.0,
-                responsibilities=["all tasks"],
-                files_assigned=[],
-                use_planning_mode=use_planning
-            ))
+            roles.append(
+                RoleAssignment(
+                    role="coordinator",
+                    client_id="claude-main",
+                    model=model,
+                    vote_weight=2.0,
+                    responsibilities=["all tasks"],
+                    files_assigned=[],
+                    use_planning_mode=use_planning,
+                )
+            )
             return roles
 
         # Always have coordinator
         coord_model = self.select_model("coordinator", features)
         coord_planning = self.should_use_planning_mode("coordinator", features)
 
-        roles.append(RoleAssignment(
-            role="coordinator",
-            client_id="claude-coordinator",
-            model=coord_model,
-            vote_weight=2.0,
-            responsibilities=["orchestration", "integration", "decisions"],
-            files_assigned=[],
-            use_planning_mode=coord_planning
-        ))
+        roles.append(
+            RoleAssignment(
+                role="coordinator",
+                client_id="claude-coordinator",
+                model=coord_model,
+                vote_weight=2.0,
+                responsibilities=["orchestration", "integration", "decisions"],
+                files_assigned=[],
+                use_planning_mode=coord_planning,
+            )
+        )
 
         remaining = num_claudes - 1
 
@@ -453,30 +484,34 @@ class MLOrchestrator:
             model = self.select_model("reviewer", features)
             use_planning = self.should_use_planning_mode("reviewer", features)
 
-            roles.append(RoleAssignment(
-                role="reviewer",
-                client_id="claude-reviewer",
-                model=model,
-                vote_weight=1.5,
-                responsibilities=["code review", "quality assurance", "veto power"],
-                files_assigned=[],
-                use_planning_mode=use_planning
-            ))
+            roles.append(
+                RoleAssignment(
+                    role="reviewer",
+                    client_id="claude-reviewer",
+                    model=model,
+                    vote_weight=1.5,
+                    responsibilities=["code review", "quality assurance", "veto power"],
+                    files_assigned=[],
+                    use_planning_mode=use_planning,
+                )
+            )
             remaining -= 1
 
         if features.needs_testing and remaining > 0:
             model = self.select_model("tester", features)
             use_planning = self.should_use_planning_mode("tester", features)
 
-            roles.append(RoleAssignment(
-                role="tester",
-                client_id="claude-tester",
-                model=model,
-                vote_weight=1.0,
-                responsibilities=["testing", "QA", "bug reporting"],
-                files_assigned=[],
-                use_planning_mode=use_planning
-            ))
+            roles.append(
+                RoleAssignment(
+                    role="tester",
+                    client_id="claude-tester",
+                    model=model,
+                    vote_weight=1.0,
+                    responsibilities=["testing", "QA", "bug reporting"],
+                    files_assigned=[],
+                    use_planning_mode=use_planning,
+                )
+            )
             remaining -= 1
 
         # Assign coders for remaining slots
@@ -484,20 +519,23 @@ class MLOrchestrator:
             model = self.select_model("coder", features)
             use_planning = self.should_use_planning_mode("coder", features)
 
-            roles.append(RoleAssignment(
-                role="coder",
-                client_id=f"claude-coder-{i+1}",
-                model=model,
-                vote_weight=1.0,
-                responsibilities=[f"implementation {i+1}"],
-                files_assigned=[],
-                use_planning_mode=use_planning
-            ))
+            roles.append(
+                RoleAssignment(
+                    role="coder",
+                    client_id=f"claude-coder-{i+1}",
+                    model=model,
+                    vote_weight=1.0,
+                    responsibilities=[f"implementation {i+1}"],
+                    files_assigned=[],
+                    use_planning_mode=use_planning,
+                )
+            )
 
         return roles
 
-    def create_plan(self, task_description: str,
-                   code_context: Optional[Dict] = None) -> CollaborationPlan:
+    def create_plan(
+        self, task_description: str, code_context: Optional[Dict] = None
+    ) -> CollaborationPlan:
         """
         Create complete collaboration plan for a task
 
@@ -522,7 +560,10 @@ class MLOrchestrator:
 
         # Step 5: Create channels (if bridge)
         channels = []
-        if strategy != CollabStrategy.SINGLE_CLAUDE and strategy != CollabStrategy.AGENTS:
+        if (
+            strategy != CollabStrategy.SINGLE_CLAUDE
+            and strategy != CollabStrategy.AGENTS
+        ):
             channels = [
                 {"name": "main", "topic": "General discussion"},
                 {"name": "code", "topic": "Code development"},
@@ -539,7 +580,9 @@ class MLOrchestrator:
         cost_usd = self._estimate_cost(features, strategy, num_agents, num_claudes)
 
         # Step 8: Generate reasoning
-        reasoning = self._generate_reasoning(features, strategy, num_agents, num_claudes, roles)
+        reasoning = self._generate_reasoning(
+            features, strategy, num_agents, num_claudes, roles
+        )
 
         # Extract coordinator info
         coordinator = next((r for r in roles if r.role == "coordinator"), roles[0])
@@ -556,80 +599,115 @@ class MLOrchestrator:
             estimated_duration_hours=features.estimated_hours,
             coordinator_model=coordinator.model,
             coordinator_uses_planning=coordinator.use_planning_mode,
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
-    def _create_phases(self, features: TaskFeatures, strategy: CollabStrategy,
-                      roles: List[RoleAssignment]) -> List[Dict]:
+    def _create_phases(
+        self,
+        features: TaskFeatures,
+        strategy: CollabStrategy,
+        roles: List[RoleAssignment],
+    ) -> List[Dict]:
         """Create execution phases"""
         phases = []
 
         if strategy == CollabStrategy.AGENTS:
-            phases.append({
-                "name": "Research & Planning",
-                "agents": ["explore", "general-purpose"],
-                "duration_hours": features.estimated_hours * 0.3
-            })
-            phases.append({
-                "name": "Implementation",
-                "agents": ["general-purpose"] * (len(roles) - 1),
-                "duration_hours": features.estimated_hours * 0.5
-            })
-            phases.append({
-                "name": "Testing & Review",
-                "agents": ["general-purpose"],
-                "duration_hours": features.estimated_hours * 0.2
-            })
+            phases.append(
+                {
+                    "name": "Research & Planning",
+                    "agents": ["explore", "general-purpose"],
+                    "duration_hours": features.estimated_hours * 0.3,
+                }
+            )
+            phases.append(
+                {
+                    "name": "Implementation",
+                    "agents": ["general-purpose"] * (len(roles) - 1),
+                    "duration_hours": features.estimated_hours * 0.5,
+                }
+            )
+            phases.append(
+                {
+                    "name": "Testing & Review",
+                    "agents": ["general-purpose"],
+                    "duration_hours": features.estimated_hours * 0.2,
+                }
+            )
         else:
             # Bridge phases
-            phases.append({
-                "name": "Planning & Design",
-                "roles": ["coordinator"],
-                "duration_hours": features.estimated_hours * 0.2,
-                "deliverable": "Architecture decision"
-            })
-            phases.append({
-                "name": "Parallel Implementation",
-                "roles": [r.role for r in roles if r.role == "coder"],
-                "duration_hours": features.estimated_hours * 0.5,
-                "deliverable": "Code complete"
-            })
+            phases.append(
+                {
+                    "name": "Planning & Design",
+                    "roles": ["coordinator"],
+                    "duration_hours": features.estimated_hours * 0.2,
+                    "deliverable": "Architecture decision",
+                }
+            )
+            phases.append(
+                {
+                    "name": "Parallel Implementation",
+                    "roles": [r.role for r in roles if r.role == "coder"],
+                    "duration_hours": features.estimated_hours * 0.5,
+                    "deliverable": "Code complete",
+                }
+            )
             if features.needs_code_review:
-                phases.append({
-                    "name": "Code Review",
-                    "roles": ["reviewer"],
-                    "duration_hours": features.estimated_hours * 0.15,
-                    "deliverable": "Review approved"
-                })
+                phases.append(
+                    {
+                        "name": "Code Review",
+                        "roles": ["reviewer"],
+                        "duration_hours": features.estimated_hours * 0.15,
+                        "deliverable": "Review approved",
+                    }
+                )
             if features.needs_testing:
-                phases.append({
-                    "name": "Testing",
-                    "roles": ["tester"],
-                    "duration_hours": features.estimated_hours * 0.15,
-                    "deliverable": "Tests passing"
-                })
+                phases.append(
+                    {
+                        "name": "Testing",
+                        "roles": ["tester"],
+                        "duration_hours": features.estimated_hours * 0.15,
+                        "deliverable": "Tests passing",
+                    }
+                )
 
         return phases
 
-    def _estimate_cost(self, features: TaskFeatures, strategy: CollabStrategy,
-                      num_agents: int, num_claudes: int) -> float:
+    def _estimate_cost(
+        self,
+        features: TaskFeatures,
+        strategy: CollabStrategy,
+        num_agents: int,
+        num_claudes: int,
+    ) -> float:
         """Estimate USD cost"""
         w = self.model_weights
 
         if strategy == CollabStrategy.AGENTS:
             # Agents share context, cheaper
-            return features.estimated_hours * w['cost_per_claude_hour'] * w['cost_agent_vs_claude']
+            return (
+                features.estimated_hours
+                * w["cost_per_claude_hour"]
+                * w["cost_agent_vs_claude"]
+            )
         else:
             # Multiple Claude instances
-            return features.estimated_hours * num_claudes * w['cost_per_claude_hour']
+            return features.estimated_hours * num_claudes * w["cost_per_claude_hour"]
 
-    def _generate_reasoning(self, features: TaskFeatures, strategy: CollabStrategy,
-                           num_agents: int, num_claudes: int, roles: List[RoleAssignment] = None) -> str:
+    def _generate_reasoning(
+        self,
+        features: TaskFeatures,
+        strategy: CollabStrategy,
+        num_agents: int,
+        num_claudes: int,
+        roles: List[RoleAssignment] = None,
+    ) -> str:
         """Generate human-readable reasoning"""
         lines = []
 
         lines.append("Task Analysis:")
-        lines.append(f"  - Estimated: {features.estimated_files} files, {features.estimated_loc} LOC")
+        lines.append(
+            f"  - Estimated: {features.estimated_files} files, {features.estimated_loc} LOC"
+        )
         lines.append(f"  - Complexity: {features.num_subtasks} subtasks")
         lines.append(f"  - Parallelization: {features.parallelization_score:.1%}")
         lines.append(f"  - Duration: ~{features.estimated_hours:.1f} hours")
@@ -644,16 +722,24 @@ class MLOrchestrator:
             lines.append("  ✓ Fits in single context window")
         else:
             lines.append(f"  ✓ Use {num_claudes} Claude instances")
-            lines.append(f"  ✓ Context size ({features.estimated_context_tokens:,} tokens) requires splitting")
-            lines.append(f"  ✓ Parallelization score ({features.parallelization_score:.1%}) supports team work")
+            lines.append(
+                f"  ✓ Context size ({features.estimated_context_tokens:,} tokens) requires splitting"
+            )
+            lines.append(
+                f"  ✓ Parallelization score ({features.parallelization_score:.1%}) supports team work"
+            )
 
         # Add model selection reasoning
         if roles:
             lines.append("")
             lines.append("Model Selection:")
             for role in roles:
-                planning_note = " (with planning mode)" if role.use_planning_mode else ""
-                lines.append(f"  - {role.role}: {role.model.value.upper()}{planning_note}")
+                planning_note = (
+                    " (with planning mode)" if role.use_planning_mode else ""
+                )
+                lines.append(
+                    f"  - {role.role}: {role.model.value.upper()}{planning_note}"
+                )
 
             # Explain planning mode decision
             coord = next((r for r in roles if r.role == "coordinator"), None)
@@ -661,7 +747,9 @@ class MLOrchestrator:
                 lines.append("")
                 lines.append("Planning Mode Enabled:")
                 lines.append("  ✓ Task complexity warrants architecture planning")
-                lines.append("  ✓ Coordinator will design approach before implementation")
+                lines.append(
+                    "  ✓ Coordinator will design approach before implementation"
+                )
 
         return "\n".join(lines)
 
@@ -690,7 +778,9 @@ class MLOrchestrator:
 
         print("Roles:")
         for role in plan.roles:
-            print(f"  - {role.role}: {role.client_id} (vote weight: {role.vote_weight}x)")
+            print(
+                f"  - {role.role}: {role.client_id} (vote weight: {role.vote_weight}x)"
+            )
         print("")
 
         print("Phases:")
@@ -719,24 +809,21 @@ class MLOrchestrator:
 
 
 # Command-line interface
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
-    print("="*80)
+    print("=" * 80)
     print("🤖 ML-Based Collaboration Orchestrator")
-    print("="*80)
+    print("=" * 80)
 
     orchestrator = MLOrchestrator()
 
     # Test cases
     test_cases = [
-        {
-            "task": "Fix typo in README.md",
-            "context": {"file_count": 1, "loc": 50}
-        },
+        {"task": "Fix typo in README.md", "context": {"file_count": 1, "loc": 50}},
         {
             "task": "Add new feature: user authentication with login, signup, password reset, and email verification",
-            "context": {"file_count": 12, "loc": 2000}
+            "context": {"file_count": 12, "loc": 2000},
         },
         {
             "task": """Build a trading bot with:
@@ -746,12 +833,12 @@ if __name__ == '__main__':
 - Risk management system
 - Database for trade history
 - API integration with 3 brokers""",
-            "context": {"file_count": 45, "loc": 8000}
+            "context": {"file_count": 45, "loc": 8000},
         },
         {
             "task": "Refactor authentication module and add tests",
-            "context": {"file_count": 5, "loc": 800}
-        }
+            "context": {"file_count": 5, "loc": 800},
+        },
     ]
 
     for i, test in enumerate(test_cases, 1):
@@ -761,7 +848,7 @@ if __name__ == '__main__':
         print(f"Task: {test['task'][:100]}...")
         print("")
 
-        plan = orchestrator.create_plan(test['task'], test.get('context'))
+        plan = orchestrator.create_plan(test["task"], test.get("context"))
 
         print("📋 PLAN SUMMARY")
         print(f"  Strategy: {plan.strategy.value}")
@@ -772,9 +859,9 @@ if __name__ == '__main__':
         print("")
 
         print("Reasoning:")
-        for line in plan.reasoning.split('\n'):
+        for line in plan.reasoning.split("\n"):
             print(f"  {line}")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("✅ Orchestrator tests complete!")
-    print("="*80)
+    print("=" * 80)

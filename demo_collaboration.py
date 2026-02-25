@@ -21,7 +21,7 @@ import sys
 from datetime import datetime, timezone
 
 # Add parent directory to path
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
 
 from code_client_collab import CodeClientCollab
 from ai_summarization import AISummarizer
@@ -49,7 +49,9 @@ def demo_collaboration():
     """Run full collaboration demo"""
     print_banner("🤝 CLAUDE MULTI-AGENT BRIDGE - Collaboration Demo v1.3.0")
     print("This demo shows 5 Claude instances collaborating in real-time.")
-    print("Features: Rooms, Voting, Channels, Files, Code, Kanban, GitHub, AI, Threading")
+    print(
+        "Features: Rooms, Voting, Channels, Files, Code, Kanban, GitHub, AI, Threading"
+    )
 
     wait_for_input("Press Enter to start demo...")
 
@@ -147,7 +149,9 @@ def demo_collaboration():
         code.send_to_room("Let's start with the API design", channel="main")
         desktop1.send_to_room("I'll handle the FastAPI endpoints", channel=code_ch)
         browser.send_to_room("Setting up integration tests", channel=test_ch)
-        desktop2.send_to_room("Found a race condition in order execution", channel=bugs_ch)
+        desktop2.send_to_room(
+            "Found a race condition in order execution", channel=bugs_ch
+        )
         print("   ✅ Messages sent to 4 channels")
     except Exception as e:
         print(f"   ⚠️  Messaging not available: {e}")
@@ -161,7 +165,9 @@ def demo_collaboration():
 
     print_step(7, "Proposing decision: Use FastAPI for backend")
     try:
-        dec1 = code.propose_decision("Use FastAPI for backend framework", vote_type="simple_majority")
+        dec1 = code.propose_decision(
+            "Use FastAPI for backend framework", vote_type="simple_majority"
+        )
         print(f"   ✅ Decision proposed: {dec1}")
         print("   Vote type: Simple Majority (>50%)")
 
@@ -180,7 +186,9 @@ def demo_collaboration():
 
     print_step(8, "Proposing critical decision with CONSENSUS requirement...")
     try:
-        dec2 = code.propose_decision("Delete production database", vote_type="consensus")
+        dec2 = code.propose_decision(
+            "Delete production database", vote_type="consensus"
+        )
         print(f"   ✅ Decision proposed: {dec2}")
         print("   Vote type: Consensus (100% required)")
 
@@ -197,7 +205,9 @@ def demo_collaboration():
 
     print_step(9, "Testing VETO power...")
     try:
-        dec3 = code.propose_decision("Deploy to production now", vote_type="simple_majority")
+        dec3 = code.propose_decision(
+            "Deploy to production now", vote_type="simple_majority"
+        )
         print(f"   ✅ Decision proposed: {dec3}")
 
         desktop1.vote(dec3, approve=True)
@@ -221,8 +231,9 @@ def demo_collaboration():
     try:
         # Create test file
         test_file = "test_strategy.py"
-        with open(test_file, 'w') as f:
-            f.write("""
+        with open(test_file, "w") as f:
+            f.write(
+                """
 def calculate_rsi(prices, period=14):
     \"\"\"Calculate RSI indicator\"\"\"
     gains = []
@@ -246,7 +257,8 @@ def calculate_rsi(prices, period=14):
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
-""")
+"""
+            )
 
         file_id = desktop1.upload_file(test_file, channel=code_ch)
         print(f"   ✅ File uploaded: {test_file} ({file_id})")
@@ -275,7 +287,7 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
         print(f"   Exit code: {result['exit_code']}")
         print(f"   Execution time: {result['execution_time_ms']}ms")
         print("   Output:")
-        for line in result['output'].split('\n'):
+        for line in result["output"].split("\n"):
             if line.strip():
                 print(f"      {line}")
     except Exception as e:
@@ -292,12 +304,47 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
     threading = MessageThreading()
 
     # Build thread
-    threading.add_message("msg-1", "claude-code", "Should we add WebSocket support?", "2026-02-22T10:00:00Z")
-    threading.add_message("msg-2", "claude-desktop-1", "Yes! Real-time updates would be great", "2026-02-22T10:01:00Z", reply_to="msg-1")
-    threading.add_message("msg-3", "claude-desktop-2", "Agreed. Flask-Sock or Socket.io?", "2026-02-22T10:02:00Z", reply_to="msg-2")
-    threading.add_message("msg-4", "claude-browser", "Flask-Sock is simpler", "2026-02-22T10:03:00Z", reply_to="msg-3")
-    threading.add_message("msg-5", "claude-code", "What about backwards compatibility?", "2026-02-22T10:04:00Z", reply_to="msg-1")
-    threading.add_message("msg-6", "claude-mobile", "Keep REST API alongside WebSocket", "2026-02-22T10:05:00Z", reply_to="msg-5")
+    threading.add_message(
+        "msg-1",
+        "claude-code",
+        "Should we add WebSocket support?",
+        "2026-02-22T10:00:00Z",
+    )
+    threading.add_message(
+        "msg-2",
+        "claude-desktop-1",
+        "Yes! Real-time updates would be great",
+        "2026-02-22T10:01:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-3",
+        "claude-desktop-2",
+        "Agreed. Flask-Sock or Socket.io?",
+        "2026-02-22T10:02:00Z",
+        reply_to="msg-2",
+    )
+    threading.add_message(
+        "msg-4",
+        "claude-browser",
+        "Flask-Sock is simpler",
+        "2026-02-22T10:03:00Z",
+        reply_to="msg-3",
+    )
+    threading.add_message(
+        "msg-5",
+        "claude-code",
+        "What about backwards compatibility?",
+        "2026-02-22T10:04:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-6",
+        "claude-mobile",
+        "Keep REST API alongside WebSocket",
+        "2026-02-22T10:05:00Z",
+        reply_to="msg-5",
+    )
 
     thread = threading.get_thread("msg-1")
     print(threading.visualize_thread(thread.thread_id, max_text_length=50))
@@ -314,11 +361,7 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
 
     messages = threading.get_thread_messages("msg-1")
     message_dicts = [
-        {
-            'from_client': m.from_client,
-            'text': m.text,
-            'timestamp': m.timestamp
-        }
+        {"from_client": m.from_client, "text": m.text, "timestamp": m.timestamp}
         for m in messages
     ]
 
@@ -369,7 +412,9 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
     print("   • Conversation threading for complex discussions")
     print("   • AI-powered summaries of long threads")
 
-    print("\n🚀 Result: 'A room full of Claudes talking and collaborating in real-time!'")
+    print(
+        "\n🚀 Result: 'A room full of Claudes talking and collaborating in real-time!'"
+    )
 
     # Cleanup
     print("\n🧹 Cleaning up...")
@@ -386,7 +431,7 @@ print(f"Price range: ${min(prices)} - ${max(prices)}")
     print("\n" + "=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         demo_collaboration()
     except KeyboardInterrupt:
@@ -394,4 +439,5 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n\n❌ Demo error: {e}")
         import traceback
+
         traceback.print_exc()

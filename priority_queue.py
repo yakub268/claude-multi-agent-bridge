@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 @dataclass(order=True)
 class PrioritizedMessage:
     """Message with priority"""
+
     priority: int
     timestamp: float = field(compare=False)
     message: Any = field(compare=False)
@@ -48,10 +49,10 @@ class PriorityMessageQueue:
         self.queue: List[PrioritizedMessage] = []
         self.max_size = max_size
         self.stats = {
-            'total_enqueued': 0,
-            'total_dequeued': 0,
-            'rejected': 0,
-            'by_priority': {i: 0 for i in range(1, 10)}
+            "total_enqueued": 0,
+            "total_dequeued": 0,
+            "rejected": 0,
+            "by_priority": {i: 0 for i in range(1, 10)},
         }
 
         # Starvation prevention
@@ -66,14 +67,16 @@ class PriorityMessageQueue:
             True if enqueued, False if queue full
         """
         if len(self.queue) >= self.max_size:
-            self.stats['rejected'] += 1
+            self.stats["rejected"] += 1
             return False
 
         prioritized_msg = PrioritizedMessage(message, priority)
         heapq.heappush(self.queue, prioritized_msg)
 
-        self.stats['total_enqueued'] += 1
-        self.stats['by_priority'][priority] = self.stats['by_priority'].get(priority, 0) + 1
+        self.stats["total_enqueued"] += 1
+        self.stats["by_priority"][priority] = (
+            self.stats["by_priority"].get(priority, 0) + 1
+        )
 
         return True
 
@@ -91,19 +94,22 @@ class PriorityMessageQueue:
         now = time.time()
         has_low_priority = any(msg.priority >= 7 for msg in self.queue)
 
-        if has_low_priority and (now - self.last_low_priority_dequeue) > self.low_priority_wait_time:
+        if (
+            has_low_priority
+            and (now - self.last_low_priority_dequeue) > self.low_priority_wait_time
+        ):
             # Force dequeue a low-priority message
             for i, msg in enumerate(self.queue):
                 if msg.priority >= 7:
                     self.queue.pop(i)
                     heapq.heapify(self.queue)
                     self.last_low_priority_dequeue = now
-                    self.stats['total_dequeued'] += 1
+                    self.stats["total_dequeued"] += 1
                     return msg.message
 
         # Normal priority dequeue
         prioritized_msg = heapq.heappop(self.queue)
-        self.stats['total_dequeued'] += 1
+        self.stats["total_dequeued"] += 1
 
         if prioritized_msg.priority >= 7:
             self.last_low_priority_dequeue = now
@@ -137,10 +143,10 @@ class PriorityMessageQueue:
 
         return {
             **self.stats,
-            'current_size': len(self.queue),
-            'max_size': self.max_size,
-            'utilization': len(self.queue) / self.max_size,
-            'current_distribution': priority_distribution
+            "current_size": len(self.queue),
+            "max_size": self.max_size,
+            "utilization": len(self.queue) / self.max_size,
+            "current_distribution": priority_distribution,
         }
 
 
@@ -148,42 +154,40 @@ class PriorityMessageQueue:
 # Message Priority Helpers
 # ============================================================================
 
+
 class Priority:
     """Priority level constants"""
-    CRITICAL = 1   # System messages, errors
-    HIGH = 3       # Interactive commands, user requests
-    NORMAL = 5     # Default priority
-    LOW = 7        # Background tasks, updates
-    BULK = 9       # Batch operations, analytics
+
+    CRITICAL = 1  # System messages, errors
+    HIGH = 3  # Interactive commands, user requests
+    NORMAL = 5  # Default priority
+    LOW = 7  # Background tasks, updates
+    BULK = 9  # Batch operations, analytics
 
 
 def get_priority_for_type(msg_type: str) -> int:
     """Get recommended priority for message type"""
     priority_map = {
         # Critical
-        'error': Priority.CRITICAL,
-        'shutdown': Priority.CRITICAL,
-        'alert': Priority.CRITICAL,
-
+        "error": Priority.CRITICAL,
+        "shutdown": Priority.CRITICAL,
+        "alert": Priority.CRITICAL,
         # High
-        'command': Priority.HIGH,
-        'query': Priority.HIGH,
-        'interactive': Priority.HIGH,
-
+        "command": Priority.HIGH,
+        "query": Priority.HIGH,
+        "interactive": Priority.HIGH,
         # Normal
-        'message': Priority.NORMAL,
-        'response': Priority.NORMAL,
-        'notification': Priority.NORMAL,
-
+        "message": Priority.NORMAL,
+        "response": Priority.NORMAL,
+        "notification": Priority.NORMAL,
         # Low
-        'status': Priority.LOW,
-        'heartbeat': Priority.LOW,
-        'sync': Priority.LOW,
-
+        "status": Priority.LOW,
+        "heartbeat": Priority.LOW,
+        "sync": Priority.LOW,
         # Bulk
-        'batch': Priority.BULK,
-        'analytics': Priority.BULK,
-        'log': Priority.BULK,
+        "batch": Priority.BULK,
+        "analytics": Priority.BULK,
+        "log": Priority.BULK,
     }
 
     return priority_map.get(msg_type, Priority.NORMAL)
@@ -193,21 +197,21 @@ def get_priority_for_type(msg_type: str) -> int:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🧪 Priority Queue Test")
-    print("="*70)
+    print("=" * 70)
 
     queue = PriorityMessageQueue(max_size=100)
 
     # Add messages with different priorities
     messages = [
-        ({'type': 'batch', 'data': 'bulk1'}, Priority.BULK),
-        ({'type': 'command', 'data': 'cmd1'}, Priority.HIGH),
-        ({'type': 'message', 'data': 'msg1'}, Priority.NORMAL),
-        ({'type': 'error', 'data': 'err1'}, Priority.CRITICAL),
-        ({'type': 'status', 'data': 'status1'}, Priority.LOW),
-        ({'type': 'command', 'data': 'cmd2'}, Priority.HIGH),
+        ({"type": "batch", "data": "bulk1"}, Priority.BULK),
+        ({"type": "command", "data": "cmd1"}, Priority.HIGH),
+        ({"type": "message", "data": "msg1"}, Priority.NORMAL),
+        ({"type": "error", "data": "err1"}, Priority.CRITICAL),
+        ({"type": "status", "data": "status1"}, Priority.LOW),
+        ({"type": "command", "data": "cmd2"}, Priority.HIGH),
     ]
 
     print("\n📥 Enqueueing messages...")

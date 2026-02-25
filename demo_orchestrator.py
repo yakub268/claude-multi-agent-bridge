@@ -16,9 +16,7 @@ import time
 from datetime import datetime, timezone
 
 from orchestrator_ml import MLOrchestrator, CollabStrategy
-from collaboration_enhanced import (
-    EnhancedCollaborationRoom, MemberRole, VoteType
-)
+from collaboration_enhanced import EnhancedCollaborationRoom, MemberRole, VoteType
 
 
 def print_banner(text):
@@ -27,7 +25,9 @@ def print_banner(text):
     print("=" * 80 + "\n")
 
 
-def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: dict = None):
+def simulate_task(
+    orchestrator: MLOrchestrator, task_desc: str, code_context: dict = None
+):
     """
     Simulate automatic orchestration for a task
 
@@ -42,7 +42,9 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
     print("📊 STEP 1: Analyzing Task...")
     print(f"   Task: {task_desc}")
     if code_context:
-        print(f"   Context: {code_context.get('file_count', 0)} files, {code_context.get('loc', 0)} LOC")
+        print(
+            f"   Context: {code_context.get('file_count', 0)} files, {code_context.get('loc', 0)} LOC"
+        )
     print()
 
     time.sleep(0.5)
@@ -67,24 +69,32 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         print("   🤖 Model Selection & Planning Mode:")
         for role in plan.roles:
             planning_marker = " 📋" if role.use_planning_mode else ""
-            print(f"     • {role.client_id}: {role.model.value.upper()}{planning_marker}")
+            print(
+                f"     • {role.client_id}: {role.model.value.upper()}{planning_marker}"
+            )
         print()
 
     print("   Reasoning:")
-    for line in plan.reasoning.split('\n'):
+    for line in plan.reasoning.split("\n"):
         print(f"     {line}")
     print()
 
     time.sleep(1)
 
     # STEP 4: Execute (simulate if bridge)
-    if plan.strategy in [CollabStrategy.BRIDGE_SMALL, CollabStrategy.BRIDGE_MEDIUM, CollabStrategy.BRIDGE_LARGE]:
+    if plan.strategy in [
+        CollabStrategy.BRIDGE_SMALL,
+        CollabStrategy.BRIDGE_MEDIUM,
+        CollabStrategy.BRIDGE_LARGE,
+    ]:
         print("🌉 STEP 4: BRIDGE SELECTED - Creating Collaboration Room")
         print()
 
         # Create room
         room_id = f"room-{int(time.time())}"
-        room = EnhancedCollaborationRoom(room_id, plan.room_topic, persistence_enabled=False)
+        room = EnhancedCollaborationRoom(
+            room_id, plan.room_topic, persistence_enabled=False
+        )
         print(f"   ✅ Room created: {room_id}")
         print(f"   Topic: {plan.room_topic[:60]}")
         print()
@@ -95,8 +105,14 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         print("   👥 Adding team members:")
         for role_assignment in plan.roles:
             role_enum = MemberRole[role_assignment.role.upper()]
-            room.join(role_assignment.client_id, role=role_enum, vote_weight=role_assignment.vote_weight)
-            print(f"      ✅ {role_assignment.client_id} ({role_assignment.role}, vote weight: {role_assignment.vote_weight}x)")
+            room.join(
+                role_assignment.client_id,
+                role=role_enum,
+                vote_weight=role_assignment.vote_weight,
+            )
+            print(
+                f"      ✅ {role_assignment.client_id} ({role_assignment.role}, vote weight: {role_assignment.vote_weight}x)"
+            )
             time.sleep(0.2)
         print()
 
@@ -107,8 +123,10 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         if plan.channels:
             print("   📺 Creating channels:")
             for channel_config in plan.channels[1:]:  # Skip 'main' (auto-created)
-                ch_id = room.create_channel(channel_config['name'], channel_config['topic'], "coordinator")
-                channel_ids[channel_config['name']] = ch_id
+                ch_id = room.create_channel(
+                    channel_config["name"], channel_config["topic"], "coordinator"
+                )
+                channel_ids[channel_config["name"]] = ch_id
                 print(f"      ✅ #{channel_config['name']}: {channel_config['topic']}")
                 time.sleep(0.2)
             print()
@@ -124,7 +142,7 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         dec_id = room.propose_decision(
             "claude-coordinator",
             "Use microservices architecture with Docker",
-            vote_type=VoteType.SIMPLE_MAJORITY
+            vote_type=VoteType.SIMPLE_MAJORITY,
         )
         time.sleep(0.3)
 
@@ -146,21 +164,31 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
 
         # Simulate messages
         print("      [coordinator] Assigning tasks...")
-        room.send_message("claude-coordinator", "Breaking down work into components", channel="main")
+        room.send_message(
+            "claude-coordinator", "Breaking down work into components", channel="main"
+        )
         time.sleep(0.3)
 
         if plan.num_claudes >= 3:
             print("      [claude-coder-1] Working on auth service...")
-            code_channel = channel_ids.get('code', 'main')
-            room.send_message("claude-coder-1", "Implementing authentication service", channel=code_channel)
+            code_channel = channel_ids.get("code", "main")
+            room.send_message(
+                "claude-coder-1",
+                "Implementing authentication service",
+                channel=code_channel,
+            )
             time.sleep(0.3)
 
         # Check if reviewer exists
         reviewer_exists = any(r.role == "reviewer" for r in plan.roles)
         if plan.num_claudes >= 4 and reviewer_exists:
             print("      [claude-reviewer] Reviewing architecture...")
-            review_channel = channel_ids.get('review', 'main')
-            room.send_message("claude-reviewer", "Architecture looks good, proceeding", channel=review_channel)
+            review_channel = channel_ids.get("review", "main")
+            room.send_message(
+                "claude-reviewer",
+                "Architecture looks good, proceeding",
+                channel=review_channel,
+            )
             time.sleep(0.3)
 
         print()
@@ -170,7 +198,9 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
         print("   📊 Room Summary:")
         print(f"      Members: {summary['total_members']}")
         print(f"      Messages: {summary['total_messages']}")
-        print(f"      Decisions: {summary['total_decisions']} ({summary['approved_decisions']} approved)")
+        print(
+            f"      Decisions: {summary['total_decisions']} ({summary['approved_decisions']} approved)"
+        )
         print(f"      Channels: {summary['channels']}")
         print()
 
@@ -182,7 +212,9 @@ def simulate_task(orchestrator: MLOrchestrator, task_desc: str, code_context: di
     elif plan.strategy == CollabStrategy.AGENTS:
         print("🤖 STEP 4: AGENTS SELECTED - Would Spawn Subagents")
         print()
-        print(f"   Would execute: Task(subagent_type='general-purpose', ...) x {plan.num_agents}")
+        print(
+            f"   Would execute: Task(subagent_type='general-purpose', ...) x {plan.num_agents}"
+        )
         print("   Agents share context window, cheaper than bridge")
         print()
 
@@ -214,7 +246,7 @@ def main():
     simulate_task(
         orchestrator,
         "Fix typo in README.md - change 'colaboration' to 'collaboration'",
-        {"file_count": 1, "loc": 50}
+        {"file_count": 1, "loc": 50},
     )
 
     # ==================================================================
@@ -223,7 +255,7 @@ def main():
     simulate_task(
         orchestrator,
         "Add user authentication with login, signup, and password reset",
-        {"file_count": 8, "loc": 1200}
+        {"file_count": 8, "loc": 1200},
     )
 
     # ==================================================================
@@ -238,7 +270,7 @@ def main():
 - PostgreSQL database
 - Docker deployment
 - Complete test suite""",
-        {"file_count": 25, "loc": 4000}
+        {"file_count": 25, "loc": 4000},
     )
 
     # ==================================================================
@@ -257,7 +289,7 @@ def main():
 - Paper trading mode
 - Comprehensive logging and error handling
 - Unit tests for all strategies""",
-        {"file_count": 45, "loc": 8000}
+        {"file_count": 45, "loc": 8000},
     )
 
     # ==================================================================
@@ -300,7 +332,7 @@ def main():
     print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
@@ -308,4 +340,5 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n\n❌ Demo error: {e}")
         import traceback
+
         traceback.print_exc()

@@ -36,7 +36,8 @@ class DesktopClaudeClient:
         try:
             # On Windows, use pygetwindow
             import pygetwindow as gw
-            windows = gw.getWindowsWithTitle('Claude')
+
+            windows = gw.getWindowsWithTitle("Claude")
 
             if windows:
                 self.app_window = windows[0]
@@ -76,7 +77,7 @@ class DesktopClaudeClient:
         # This is a heuristic - may need tuning
         try:
             # Convert to grayscale
-            gray = screenshot.convert('L')
+            gray = screenshot.convert("L")
 
             # Look for input placeholder text
             # "How can Claude help you today?" or similar
@@ -108,9 +109,9 @@ class DesktopClaudeClient:
             time.sleep(0.3)
 
             # Clear existing text (Ctrl+A, Delete)
-            pyautogui.hotkey('ctrl', 'a')
+            pyautogui.hotkey("ctrl", "a")
             time.sleep(0.1)
-            pyautogui.press('delete')
+            pyautogui.press("delete")
             time.sleep(0.1)
 
             # Type message
@@ -118,7 +119,7 @@ class DesktopClaudeClient:
             time.sleep(0.3)
 
             # Submit (Enter)
-            pyautogui.press('enter')
+            pyautogui.press("enter")
 
             print(f"✅ Sent: {text[:50]}...")
             return True
@@ -146,12 +147,12 @@ class DesktopClaudeClient:
             text = pytesseract.image_to_string(response_area)
 
             # Clean up
-            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
 
             # Return last few non-empty lines (likely the response)
             if lines:
                 # Heuristic: last response is probably the last paragraph
-                response = '\n'.join(lines[-5:])  # Last 5 lines
+                response = "\n".join(lines[-5:])  # Last 5 lines
                 return response
             else:
                 return None
@@ -165,19 +166,16 @@ class DesktopClaudeClient:
         try:
             response = requests.get(
                 f"{self.bus_url}/api/messages",
-                params={
-                    'to': 'desktop',
-                    'since': self.last_check_time
-                },
-                timeout=5
+                params={"to": "desktop", "since": self.last_check_time},
+                timeout=5,
             )
 
             if response.status_code == 200:
                 data = response.json()
-                messages = data.get('messages', [])
+                messages = data.get("messages", [])
 
                 if messages:
-                    self.last_check_time = messages[-1]['timestamp']
+                    self.last_check_time = messages[-1]["timestamp"]
 
                 return messages
             else:
@@ -192,19 +190,14 @@ class DesktopClaudeClient:
         """Send response back to message bus"""
         try:
             payload = {
-                'from': 'desktop',
-                'to': 'code',
-                'type': 'claude_response',
-                'payload': {
-                    'response': response_text,
-                    'in_reply_to': original_msg_id
-                }
+                "from": "desktop",
+                "to": "code",
+                "type": "claude_response",
+                "payload": {"response": response_text, "in_reply_to": original_msg_id},
             }
 
             response = requests.post(
-                f"{self.bus_url}/api/send",
-                json=payload,
-                timeout=5
+                f"{self.bus_url}/api/send", json=payload, timeout=5
             )
 
             if response.status_code == 200:
@@ -220,13 +213,13 @@ class DesktopClaudeClient:
 
     def run_daemon(self):
         """Run in daemon mode - continuously poll and respond"""
-        print("="*70)
+        print("=" * 70)
         print("🖥️  DESKTOP CLAUDE CLIENT - DAEMON MODE")
-        print("="*70)
+        print("=" * 70)
         print(f"Message Bus: {self.bus_url}")
         print("Polling for messages directed to 'desktop'...")
         print("Press Ctrl+C to stop")
-        print("="*70)
+        print("=" * 70)
 
         if not self.find_window():
             print("\n❌ Cannot start - Claude Desktop window not found")
@@ -238,8 +231,8 @@ class DesktopClaudeClient:
                 messages = self.poll_messages()
 
                 for msg in messages:
-                    if msg['type'] == 'command':
-                        prompt = msg['payload'].get('text', '')
+                    if msg["type"] == "command":
+                        prompt = msg["payload"].get("text", "")
                         if prompt:
                             print(f"\n📩 Received: {prompt[:50]}...")
 
@@ -250,7 +243,7 @@ class DesktopClaudeClient:
 
                                 if response:
                                     print(f"📤 Response: {response[:100]}...")
-                                    self.send_response(response, msg['id'])
+                                    self.send_response(response, msg["id"])
                                 else:
                                     print("⚠️  No response extracted")
 
@@ -266,10 +259,10 @@ class DesktopClaudeClient:
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='Desktop Claude Client')
-    parser.add_argument('--daemon', action='store_true', help='Run in daemon mode')
-    parser.add_argument('--test', action='store_true', help='Test window detection')
-    parser.add_argument('--send', type=str, help='Send a single message')
+    parser = argparse.ArgumentParser(description="Desktop Claude Client")
+    parser.add_argument("--daemon", action="store_true", help="Run in daemon mode")
+    parser.add_argument("--test", action="store_true", help="Test window detection")
+    parser.add_argument("--send", type=str, help="Send a single message")
 
     args = parser.parse_args()
 
@@ -306,5 +299,5 @@ def main():
         print("\nDaemon mode polls message bus and responds to 'desktop' commands")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

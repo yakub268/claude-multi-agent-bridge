@@ -2,6 +2,7 @@
 Claude Code Client
 Allows Claude Code (CLI) to send/receive messages from browser/desktop
 """
+
 import requests
 import time
 import json
@@ -25,9 +26,9 @@ class CodeClient:
                     "from": self.client_id,
                     "to": to,
                     "type": msg_type,
-                    "payload": payload
+                    "payload": payload,
                 },
-                timeout=2
+                timeout=2,
             )
             return response.status_code == 200
         except Exception as e:
@@ -46,9 +47,7 @@ class CodeClient:
                 params["since"] = self.last_timestamp
 
             response = requests.get(
-                f"{self.bus_url}/api/messages",
-                params=params,
-                timeout=2
+                f"{self.bus_url}/api/messages", params=params, timeout=2
             )
 
             if response.status_code == 200:
@@ -75,7 +74,9 @@ class CodeClient:
                     from_client = msg.get("from")
                     payload = msg.get("payload", {})
 
-                    print(f"📨 [{from_client}] {msg_type}: {json.dumps(payload, indent=2)}")
+                    print(
+                        f"📨 [{from_client}] {msg_type}: {json.dumps(payload, indent=2)}"
+                    )
 
                     # Dispatch to handler
                     if msg_type in self.handlers:
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     client.send(
         to="browser",
         msg_type="command",
-        payload={"action": "run_prompt", "text": "What's 2+2?"}
+        payload={"action": "run_prompt", "text": "What's 2+2?"},
     )
 
     # Register handlers

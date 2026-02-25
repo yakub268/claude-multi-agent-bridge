@@ -18,6 +18,7 @@ from queue import Queue
 
 class WebhookEvent(Enum):
     """Webhook event types"""
+
     MESSAGE_SENT = "message.sent"
     MESSAGE_RECEIVED = "message.received"
     MESSAGE_FAILED = "message.failed"
@@ -42,6 +43,7 @@ class WebhookEndpoint:
             headers={"Authorization": "Bearer token123"}
         )
     """
+
     url: str
     events: set  # Set of WebhookEvent
     secret: Optional[str] = None
@@ -68,10 +70,10 @@ class WebhookManager:
         self.endpoints: List[WebhookEndpoint] = []
         self.delivery_queue = Queue(maxsize=max_queue_size)
         self.stats = {
-            'total_sent': 0,
-            'total_delivered': 0,
-            'total_failed': 0,
-            'by_event': {}
+            "total_sent": 0,
+            "total_delivered": 0,
+            "total_failed": 0,
+            "by_event": {},
         }
         self.failed_webhooks = []
         self._worker_running = False
@@ -97,23 +99,22 @@ class WebhookManager:
             payload: Event data
         """
         matching_endpoints = [
-            ep for ep in self.endpoints
-            if event in ep.events and ep.enabled
+            ep for ep in self.endpoints if event in ep.events and ep.enabled
         ]
 
         if not matching_endpoints:
             return
 
         # Update stats
-        self.stats['total_sent'] += len(matching_endpoints)
+        self.stats["total_sent"] += len(matching_endpoints)
         event_key = event.value
-        self.stats['by_event'][event_key] = self.stats['by_event'].get(event_key, 0) + 1
+        self.stats["by_event"][event_key] = self.stats["by_event"].get(event_key, 0) + 1
 
         # Create webhook payload
         webhook_payload = {
-            'event': event.value,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'data': payload
+            "event": event.value,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": payload,
         }
 
         # Queue deliveries (async)
@@ -163,63 +164,67 @@ class WebhookManager:
 
                 if endpoint.secret:
                     signature = self._sign_payload(payload, endpoint.secret)
-                    headers['X-Webhook-Signature'] = signature
+                    headers["X-Webhook-Signature"] = signature
 
-                headers['Content-Type'] = 'application/json'
-                headers['User-Agent'] = 'MultiAgentBridge-Webhook/1.0'
+                headers["Content-Type"] = "application/json"
+                headers["User-Agent"] = "MultiAgentBridge-Webhook/1.0"
 
                 # Send webhook
                 response = requests.post(
                     endpoint.url,
                     json=payload,
                     headers=headers,
-                    timeout=endpoint.timeout
+                    timeout=endpoint.timeout,
                 )
 
                 if response.status_code < 300:
                     # Success
-                    self.stats['total_delivered'] += 1
+                    self.stats["total_delivered"] += 1
                     return
 
                 else:
                     # HTTP error, will retry
                     if attempt == endpoint.max_retries - 1:
-                        self._handle_failed_webhook(endpoint, payload, f"HTTP {response.status_code}")
+                        self._handle_failed_webhook(
+                            endpoint, payload, f"HTTP {response.status_code}"
+                        )
                     else:
-                        time.sleep(2 ** attempt)  # Exponential backoff
+                        time.sleep(2**attempt)  # Exponential backoff
 
             except requests.exceptions.Timeout:
                 if attempt == endpoint.max_retries - 1:
                     self._handle_failed_webhook(endpoint, payload, "Timeout")
                 else:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
 
             except Exception as e:
                 if attempt == endpoint.max_retries - 1:
                     self._handle_failed_webhook(endpoint, payload, str(e))
                 else:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
 
     def _sign_payload(self, payload: Dict, secret: str) -> str:
         """Generate HMAC signature for payload"""
-        payload_bytes = json.dumps(payload, sort_keys=True).encode('utf-8')
+        payload_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
         signature = hmac.new(
-            secret.encode('utf-8'),
-            payload_bytes,
-            hashlib.sha256
+            secret.encode("utf-8"), payload_bytes, hashlib.sha256
         ).hexdigest()
         return signature
 
-    def _handle_failed_webhook(self, endpoint: WebhookEndpoint, payload: Dict, error: str):
+    def _handle_failed_webhook(
+        self, endpoint: WebhookEndpoint, payload: Dict, error: str
+    ):
         """Handle failed webhook delivery"""
-        self.stats['total_failed'] += 1
+        self.stats["total_failed"] += 1
 
-        self.failed_webhooks.append({
-            'url': endpoint.url,
-            'payload': payload,
-            'error': error,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        })
+        self.failed_webhooks.append(
+            {
+                "url": endpoint.url,
+                "payload": payload,
+                "error": error,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         # Keep only last 100 failed webhooks
         if len(self.failed_webhooks) > 100:
@@ -245,15 +250,15 @@ class WebhookManager:
     def get_stats(self) -> Dict:
         """Get webhook delivery statistics"""
         success_rate = 0
-        if self.stats['total_sent'] > 0:
-            success_rate = self.stats['total_delivered'] / self.stats['total_sent']
+        if self.stats["total_sent"] > 0:
+            success_rate = self.stats["total_delivered"] / self.stats["total_sent"]
 
         return {
             **self.stats,
-            'success_rate': success_rate,
-            'queue_size': self.delivery_queue.qsize(),
-            'failed_recent': len(self.failed_webhooks),
-            'endpoints_registered': len(self.endpoints)
+            "success_rate": success_rate,
+            "queue_size": self.delivery_queue.qsize(),
+            "failed_recent": len(self.failed_webhooks),
+            "endpoints_registered": len(self.endpoints),
         }
 
     def get_failed_webhooks(self, limit: int = 50) -> List[Dict]:
@@ -267,18 +272,19 @@ class WebhookManager:
             return
 
         # Find failed webhooks for this URL
-        failed_for_url = [w for w in self.failed_webhooks if w['url'] == url]
+        failed_for_url = [w for w in self.failed_webhooks if w["url"] == url]
 
         for failed in failed_for_url:
-            self.delivery_queue.put((endpoint, failed['payload']))
+            self.delivery_queue.put((endpoint, failed["payload"]))
 
         # Remove from failed list
-        self.failed_webhooks = [w for w in self.failed_webhooks if w['url'] != url]
+        self.failed_webhooks = [w for w in self.failed_webhooks if w["url"] != url]
 
 
 # ============================================================================
 # Pre-built Webhook Integrations
 # ============================================================================
+
 
 class SlackWebhook:
     """Slack webhook integration"""
@@ -292,7 +298,7 @@ class SlackWebhook:
             WebhookEvent.MESSAGE_FAILED: "❌",
             WebhookEvent.CLIENT_CONNECTED: "🟢",
             WebhookEvent.CLIENT_DISCONNECTED: "🔴",
-            WebhookEvent.ERROR_OCCURRED: "⚠️"
+            WebhookEvent.ERROR_OCCURRED: "⚠️",
         }
 
         emoji = emoji_map.get(event, "📣")
@@ -304,10 +310,10 @@ class SlackWebhook:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"{emoji} *{event.value}*\n```{json.dumps(data, indent=2)}```"
-                    }
+                        "text": f"{emoji} *{event.value}*\n```{json.dumps(data, indent=2)}```",
+                    },
                 }
-            ]
+            ],
         }
 
     @staticmethod
@@ -326,16 +332,18 @@ class DiscordWebhook:
         color_map = {
             WebhookEvent.MESSAGE_SENT: 0x00FF00,
             WebhookEvent.MESSAGE_FAILED: 0xFF0000,
-            WebhookEvent.ERROR_OCCURRED: 0xFFA500
+            WebhookEvent.ERROR_OCCURRED: 0xFFA500,
         }
 
         return {
-            "embeds": [{
-                "title": event.value,
-                "description": f"```json\n{json.dumps(data, indent=2)}\n```",
-                "color": color_map.get(event, 0x0099FF),
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }]
+            "embeds": [
+                {
+                    "title": event.value,
+                    "description": f"```json\n{json.dumps(data, indent=2)}\n```",
+                    "color": color_map.get(event, 0x0099FF),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            ]
         }
 
     @staticmethod
@@ -349,10 +357,10 @@ class DiscordWebhook:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🪝 Webhook System Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create manager
     manager = WebhookManager()
@@ -361,13 +369,13 @@ if __name__ == '__main__':
     endpoint1 = WebhookEndpoint(
         url="https://webhook.site/test-endpoint-1",
         events={WebhookEvent.MESSAGE_SENT, WebhookEvent.MESSAGE_RECEIVED},
-        secret="secret123"
+        secret="secret123",
     )
 
     endpoint2 = WebhookEndpoint(
         url="https://webhook.site/test-endpoint-2",
         events={WebhookEvent.ERROR_OCCURRED},
-        headers={"Authorization": "Bearer token123"}
+        headers={"Authorization": "Bearer token123"},
     )
 
     manager.register(endpoint1)
@@ -378,18 +386,21 @@ if __name__ == '__main__':
 
     # Trigger events
     print("\n📤 Triggering MESSAGE_SENT event...")
-    manager.trigger(WebhookEvent.MESSAGE_SENT, {
-        'from': 'code',
-        'to': 'browser',
-        'type': 'command',
-        'payload': {'text': 'Hello'}
-    })
+    manager.trigger(
+        WebhookEvent.MESSAGE_SENT,
+        {
+            "from": "code",
+            "to": "browser",
+            "type": "command",
+            "payload": {"text": "Hello"},
+        },
+    )
 
     print("\n⚠️ Triggering ERROR_OCCURRED event...")
-    manager.trigger(WebhookEvent.ERROR_OCCURRED, {
-        'error': 'Connection timeout',
-        'details': 'Client browser timed out'
-    })
+    manager.trigger(
+        WebhookEvent.ERROR_OCCURRED,
+        {"error": "Connection timeout", "details": "Client browser timed out"},
+    )
 
     # Wait for delivery
     time.sleep(2)
@@ -401,11 +412,11 @@ if __name__ == '__main__':
 
     # Test signature verification
     print("\n🔐 Testing signature verification...")
-    test_payload = {'test': 'data'}
-    signature = manager._sign_payload(test_payload, 'secret123')
+    test_payload = {"test": "data"}
+    signature = manager._sign_payload(test_payload, "secret123")
 
-    valid = manager.verify_signature(test_payload, signature, 'secret123')
-    invalid = manager.verify_signature(test_payload, 'wrong_signature', 'secret123')
+    valid = manager.verify_signature(test_payload, signature, "secret123")
+    invalid = manager.verify_signature(test_payload, "wrong_signature", "secret123")
 
     print(f"   Valid signature: {valid}")
     print(f"   Invalid signature: {invalid}")
@@ -413,8 +424,7 @@ if __name__ == '__main__':
     # Slack example
     print("\n📱 Slack integration example:")
     slack_msg = SlackWebhook.format_message(
-        WebhookEvent.MESSAGE_SENT,
-        {'from': 'code', 'to': 'browser'}
+        WebhookEvent.MESSAGE_SENT, {"from": "code", "to": "browser"}
     )
     print(f"   {slack_msg['text']}")
 

@@ -1,6 +1,7 @@
 """
 Playwright Bridge - Control browser Claude via Playwright MCP
 """
+
 import json
 import time
 from code_client import CodeClient
@@ -75,7 +76,7 @@ class PlaywrightBridge:
         return self.client.send(
             to="browser",
             msg_type="command",
-            payload={"action": "run_prompt", "text": prompt_text}
+            payload={"action": "run_prompt", "text": prompt_text},
         )
 
     def wait_for_response(self, timeout: float = 30.0) -> str:
@@ -85,10 +86,10 @@ class PlaywrightBridge:
 
         def on_response(msg):
             nonlocal last_response
-            if msg.get('from') == 'browser' and msg.get('type') == 'response':
-                last_response = msg.get('payload', {}).get('text', '')
+            if msg.get("from") == "browser" and msg.get("type") == "response":
+                last_response = msg.get("payload", {}).get("text", "")
 
-        self.client.on('response', on_response)
+        self.client.on("response", on_response)
 
         while (time.time() - start_time) < timeout:
             self.client.poll()

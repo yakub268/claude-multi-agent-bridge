@@ -1,9 +1,11 @@
 """
 Quick system test - verify all components working
 """
+
 from code_client import CodeClient
 import json
 import time
+
 
 def test_system():
     print("🧪 Multi-Claude Communication System Test\n")
@@ -14,8 +16,10 @@ def test_system():
     client = CodeClient()
     status = client.status()
 
-    if status.get('status') == 'running':
-        print(f"   ✅ Server running ({status.get('message_count', 0)} messages in queue)")
+    if status.get("status") == "running":
+        print(
+            f"   ✅ Server running ({status.get('message_count', 0)} messages in queue)"
+        )
     else:
         print("   ❌ Server not responding")
         return False
@@ -24,23 +28,21 @@ def test_system():
     print("\n2️⃣  Testing message sending...")
 
     # To browser
-    success = client.send("browser", "command", {
-        "action": "run_prompt",
-        "text": "Test message from Code CLI"
-    })
+    success = client.send(
+        "browser",
+        "command",
+        {"action": "run_prompt", "text": "Test message from Code CLI"},
+    )
     print(f"   {'✅' if success else '❌'} Send to browser")
 
     # To extension
-    success = client.send("extension", "ping", {
-        "timestamp": time.time()
-    })
+    success = client.send("extension", "ping", {"timestamp": time.time()})
     print(f"   {'✅' if success else '❌'} Send to extension")
 
     # Broadcast
-    success = client.broadcast("test", {
-        "source": "test_system.py",
-        "message": "System test in progress"
-    })
+    success = client.broadcast(
+        "test", {"source": "test_system.py", "message": "System test in progress"}
+    )
     print(f"   {'✅' if success else '❌'} Broadcast to all")
 
     # Test 3: Receive messages
@@ -91,4 +93,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()

@@ -2,6 +2,7 @@
 Playwright Demo - Control browser Claude via Playwright MCP
 NOTE: This requires Playwright MCP server to be running
 """
+
 from code_client import CodeClient
 import time
 

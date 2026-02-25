@@ -44,23 +44,18 @@ class Histogram:
                 return
 
         # Value exceeds all buckets
-        self.counts[float('inf')] += 1
+        self.counts[float("inf")] += 1
 
     def get_stats(self) -> Dict:
         """Get histogram statistics"""
         if self.count == 0:
-            return {
-                'count': 0,
-                'sum': 0,
-                'avg': 0,
-                'buckets': {}
-            }
+            return {"count": 0, "sum": 0, "avg": 0, "buckets": {}}
 
         return {
-            'count': self.count,
-            'sum': self.sum,
-            'avg': self.sum / self.count,
-            'buckets': dict(self.counts)
+            "count": self.count,
+            "sum": self.sum,
+            "avg": self.sum / self.count,
+            "buckets": dict(self.counts),
         }
 
 
@@ -182,12 +177,7 @@ class Summary:
         self._cleanup_old()
 
         if not self.observations:
-            return {
-                'count': 0,
-                'sum': 0,
-                'avg': 0,
-                'quantiles': {}
-            }
+            return {"count": 0, "sum": 0, "avg": 0, "quantiles": {}}
 
         values = [v for _, v in self.observations]
         sorted_values = sorted(values)
@@ -200,12 +190,12 @@ class Summary:
             quantile_results[q] = sorted_values[idx]
 
         return {
-            'count': len(values),
-            'sum': sum(values),
-            'avg': statistics.mean(values),
-            'min': min(values),
-            'max': max(values),
-            'quantiles': quantile_results
+            "count": len(values),
+            "sum": sum(values),
+            "avg": statistics.mean(values),
+            "min": min(values),
+            "max": max(values),
+            "quantiles": quantile_results,
         }
 
 
@@ -239,7 +229,9 @@ class MetricsCollector:
             self.gauges[name] = Gauge(name, help_text)
         return self.gauges[name]
 
-    def histogram(self, name: str, buckets: List[float], help_text: str = "") -> Histogram:
+    def histogram(
+        self, name: str, buckets: List[float], help_text: str = ""
+    ) -> Histogram:
         """Get or create histogram"""
         if name not in self.histograms:
             self.histograms[name] = Histogram(buckets)
@@ -254,24 +246,24 @@ class MetricsCollector:
     def take_snapshot(self):
         """Take snapshot of all metrics"""
         snapshot = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'counters': {},
-            'gauges': {},
-            'histograms': {},
-            'summaries': {}
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "counters": {},
+            "gauges": {},
+            "histograms": {},
+            "summaries": {},
         }
 
         for name, counter in self.counters.items():
-            snapshot['counters'][name] = counter.get_all()
+            snapshot["counters"][name] = counter.get_all()
 
         for name, gauge in self.gauges.items():
-            snapshot['gauges'][name] = gauge.get_all()
+            snapshot["gauges"][name] = gauge.get_all()
 
         for name, histogram in self.histograms.items():
-            snapshot['histograms'][name] = histogram.get_stats()
+            snapshot["histograms"][name] = histogram.get_stats()
 
         for name, summary in self.summaries.items():
-            snapshot['summaries'][name] = summary.get_stats()
+            snapshot["summaries"][name] = summary.get_stats()
 
         self.snapshots.append(snapshot)
 
@@ -315,9 +307,9 @@ class MetricsCollector:
 
             stats = histogram.get_stats()
 
-            for bucket, count in stats['buckets'].items():
-                bucket_label = "+In" if bucket == float('inf') else str(bucket)
-                lines.append(f"{name}_bucket{{le=\"{bucket_label}\"}} {count}")
+            for bucket, count in stats["buckets"].items():
+                bucket_label = "+In" if bucket == float("inf") else str(bucket)
+                lines.append(f'{name}_bucket{{le="{bucket_label}"}} {count}')
 
             lines.append(f"{name}_sum {stats['sum']}")
             lines.append(f"{name}_count {stats['count']}")
@@ -329,15 +321,17 @@ class MetricsCollector:
 
             stats = summary.get_stats()
 
-            for quantile, value in stats.get('quantiles', {}).items():
-                lines.append(f"{name}{{quantile=\"{quantile}\"}} {value}")
+            for quantile, value in stats.get("quantiles", {}).items():
+                lines.append(f'{name}{{quantile="{quantile}"}} {value}')
 
             lines.append(f"{name}_sum {stats['sum']}")
             lines.append(f"{name}_count {stats['count']}")
 
         return "\n".join(lines)
 
-    def get_time_series(self, metric_name: str, metric_type: str, duration_minutes: int = 60) -> List[Dict]:
+    def get_time_series(
+        self, metric_name: str, metric_type: str, duration_minutes: int = 60
+    ) -> List[Dict]:
         """
         Get time-series data for a metric
 
@@ -353,16 +347,15 @@ class MetricsCollector:
         series = []
 
         for snapshot in self.snapshots:
-            ts = datetime.fromisoformat(snapshot['timestamp'])
+            ts = datetime.fromisoformat(snapshot["timestamp"])
             if ts < cutoff:
                 continue
 
             metric_data = snapshot.get(f"{metric_type}s", {}).get(metric_name)
             if metric_data:
-                series.append({
-                    'timestamp': snapshot['timestamp'],
-                    'value': metric_data
-                })
+                series.append(
+                    {"timestamp": snapshot["timestamp"], "value": metric_data}
+                )
 
         return series
 
@@ -371,39 +364,43 @@ class MetricsCollector:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("📊 Enhanced Metrics Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create collector
     metrics = MetricsCollector()
 
     # Counter example
     print("\n1️⃣ Counter: messages_sent")
-    msg_counter = metrics.counter('messages_sent', 'Total messages sent')
-    msg_counter.inc(labels={'from': 'code', 'to': 'browser'})
-    msg_counter.inc(labels={'from': 'code', 'to': 'browser'})
-    msg_counter.inc(labels={'from': 'browser', 'to': 'code'})
+    msg_counter = metrics.counter("messages_sent", "Total messages sent")
+    msg_counter.inc(labels={"from": "code", "to": "browser"})
+    msg_counter.inc(labels={"from": "code", "to": "browser"})
+    msg_counter.inc(labels={"from": "browser", "to": "code"})
 
-    print(f"   code→browser: {msg_counter.get(labels={'from': 'code', 'to': 'browser'})}")
-    print(f"   browser→code: {msg_counter.get(labels={'from': 'browser', 'to': 'code'})}")
+    print(
+        f"   code→browser: {msg_counter.get(labels={'from': 'code', 'to': 'browser'})}"
+    )
+    print(
+        f"   browser→code: {msg_counter.get(labels={'from': 'browser', 'to': 'code'})}"
+    )
 
     # Gauge example
     print("\n2️⃣ Gauge: active_connections")
-    conn_gauge = metrics.gauge('active_connections', 'Number of active connections')
-    conn_gauge.set(5, labels={'client': 'browser'})
-    conn_gauge.inc(2, labels={'client': 'browser'})
-    conn_gauge.dec(1, labels={'client': 'browser'})
+    conn_gauge = metrics.gauge("active_connections", "Number of active connections")
+    conn_gauge.set(5, labels={"client": "browser"})
+    conn_gauge.inc(2, labels={"client": "browser"})
+    conn_gauge.dec(1, labels={"client": "browser"})
 
     print(f"   Browser connections: {conn_gauge.get(labels={'client': 'browser'})}")
 
     # Histogram example
     print("\n3️⃣ Histogram: message_size_bytes")
     size_hist = metrics.histogram(
-        'message_size_bytes',
+        "message_size_bytes",
         buckets=[100, 1000, 10000, 100000],
-        help_text='Message size distribution'
+        help_text="Message size distribution",
     )
 
     # Simulate message sizes
@@ -415,9 +412,7 @@ if __name__ == '__main__':
     # Summary example
     print("\n4️⃣ Summary: request_duration_ms")
     duration_summary = metrics.summary(
-        'request_duration_ms',
-        help_text='Request duration in milliseconds',
-        max_age=300
+        "request_duration_ms", help_text="Request duration in milliseconds", max_age=300
     )
 
     # Simulate request durations

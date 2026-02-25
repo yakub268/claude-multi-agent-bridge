@@ -1,9 +1,11 @@
 """
 Four-way conversation test between all Claude instances
 """
+
 from code_client import CodeClient
 import time
 import json
+
 
 def main():
     client = CodeClient()
@@ -24,11 +26,14 @@ def main():
     # Test 2: Send broadcast to all
     print("2️⃣  Broadcasting to all Claude instances...\n")
 
-    client.broadcast("roll_call", {
-        "from": "Code CLI (main session)",
-        "message": "Sound off! Who's here?",
-        "timestamp": time.time()
-    })
+    client.broadcast(
+        "roll_call",
+        {
+            "from": "Code CLI (main session)",
+            "message": "Sound off! Who's here?",
+            "timestamp": time.time(),
+        },
+    )
 
     print("   ✅ Broadcast sent\n")
 
@@ -37,10 +42,7 @@ def main():
 
     test_question = "What is 144 divided by 12? Reply with JUST the number."
 
-    client.send("browser", "command", {
-        "action": "run_prompt",
-        "text": test_question
-    })
+    client.send("browser", "command", {"action": "run_prompt", "text": test_question})
 
     print(f"   📤 Sent: {test_question}")
     print()
@@ -55,28 +57,28 @@ def main():
         messages = client.poll()
 
         for msg in messages:
-            msg_id = msg.get('id')
+            msg_id = msg.get("id")
             if msg_id in seen_messages:
                 continue
 
             seen_messages.add(msg_id)
 
-            from_client = msg.get('from')
-            msg_type = msg.get('type')
+            from_client = msg.get("from")
+            msg_type = msg.get("type")
 
             # Skip our own messages
-            if from_client == 'code':
+            if from_client == "code":
                 continue
 
             print(f"   📨 [{from_client}] {msg_type}")
 
             # Show payload for interesting messages
-            if msg_type == 'claude_response':
-                payload = msg.get('payload', {})
-                response = payload.get('response', 'N/A')
+            if msg_type == "claude_response":
+                payload = msg.get("payload", {})
+                response = payload.get("response", "N/A")
                 print(f"      Response: {response[:100]}")
-            elif msg_type == 'browser_ready':
-                payload = msg.get('payload', {})
+            elif msg_type == "browser_ready":
+                payload = msg.get("payload", {})
                 print(f"      URL: {payload.get('url', 'N/A')}")
 
             print()

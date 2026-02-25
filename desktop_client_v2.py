@@ -20,8 +20,7 @@ pyautogui.PAUSE = 0.3
 
 # Logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class DesktopClaudeClient:
         """
         try:
             # Try multiple title patterns
-            patterns = ['Claude', 'claude', 'CLAUDE']
+            patterns = ["Claude", "claude", "CLAUDE"]
 
             for pattern in patterns:
                 windows = gw.getWindowsWithTitle(pattern)
@@ -64,9 +63,10 @@ class DesktopClaudeClient:
                 if windows:
                     # Filter out browser Claude (contains 'claude.ai')
                     desktop_windows = [
-                        w for w in windows
-                        if 'claude.ai' not in w.title.lower()
-                        and 'chrome' not in w.title.lower()
+                        w
+                        for w in windows
+                        if "claude.ai" not in w.title.lower()
+                        and "chrome" not in w.title.lower()
                     ]
 
                     if desktop_windows:
@@ -160,25 +160,27 @@ class DesktopClaudeClient:
             time.sleep(0.3)
 
             # Clear existing text
-            pyautogui.hotkey('ctrl', 'a')
+            pyautogui.hotkey("ctrl", "a")
             time.sleep(0.1)
-            pyautogui.press('delete')
+            pyautogui.press("delete")
             time.sleep(0.2)
 
             # Type message (handle special characters)
             # Split into chunks to avoid issues with long text
             chunk_size = 500
             for i in range(0, len(text), chunk_size):
-                chunk = text[i:i+chunk_size]
+                chunk = text[i : i + chunk_size]
                 pyautogui.write(chunk, interval=0.01)
                 time.sleep(0.1)
 
             time.sleep(0.3)
 
             # Submit
-            pyautogui.press('enter')
+            pyautogui.press("enter")
 
-            logger.info(f"✅ Sent message: {text[:100]}{'...' if len(text) > 100 else ''}")
+            logger.info(
+                f"✅ Sent message: {text[:100]}{'...' if len(text) > 100 else ''}"
+            )
             return True
 
         except Exception as e:
@@ -245,21 +247,22 @@ class DesktopClaudeClient:
                 time.sleep(0.3)
 
             # Select all
-            pyautogui.hotkey('ctrl', 'a')
+            pyautogui.hotkey("ctrl", "a")
             time.sleep(0.2)
 
             # Copy
-            pyautogui.hotkey('ctrl', 'c')
+            pyautogui.hotkey("ctrl", "c")
             time.sleep(0.3)
 
             # Get clipboard
             import pyperclip
+
             clipboard_text = pyperclip.paste()
 
             if clipboard_text and len(clipboard_text) > 0:
                 # Parse response (last message in conversation)
                 # This is heuristic - might need adjustment
-                lines = clipboard_text.split('\n')
+                lines = clipboard_text.split("\n")
 
                 # Find last substantial block of text
                 response_lines = []
@@ -271,7 +274,7 @@ class DesktopClaudeClient:
                         break
 
                 if response_lines:
-                    response = '\n'.join(response_lines)
+                    response = "\n".join(response_lines)
                     logger.debug(f"Extracted response: {response[:200]}...")
                     return response
 
@@ -286,14 +289,12 @@ class DesktopClaudeClient:
         """Poll message bus for commands"""
         try:
             response = requests.get(
-                f"{self.bus_url}/api/messages",
-                params={'to': self.client_id},
-                timeout=5
+                f"{self.bus_url}/api/messages", params={"to": self.client_id}, timeout=5
             )
 
             if response.status_code == 200:
                 data = response.json()
-                messages = data.get('messages', [])
+                messages = data.get("messages", [])
                 return messages
             else:
                 logger.error(f"❌ Poll failed: {response.status_code}")
@@ -307,20 +308,15 @@ class DesktopClaudeClient:
         """Send response back to bus"""
         try:
             payload = {
-                'from': self.client_id,
-                'to': 'code',
-                'type': 'claude_response',
-                'payload': {
-                    'response': response_text,
-                    'in_reply_to': original_msg_id
-                },
-                'timestamp': datetime.now(timezone.utc).isoformat()
+                "from": self.client_id,
+                "to": "code",
+                "type": "claude_response",
+                "payload": {"response": response_text, "in_reply_to": original_msg_id},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             response = requests.post(
-                f"{self.bus_url}/api/send",
-                json=payload,
-                timeout=5
+                f"{self.bus_url}/api/send", json=payload, timeout=5
             )
 
             if response.status_code == 200:
@@ -345,7 +341,7 @@ class DesktopClaudeClient:
             True if processed successfully
         """
         try:
-            prompt = msg['payload'].get('text', '')
+            prompt = msg["payload"].get("text", "")
             if not prompt:
                 logger.warning("⚠️  Empty prompt in command")
                 return False
@@ -366,7 +362,7 @@ class DesktopClaudeClient:
 
             if response:
                 logger.info(f"📤 Got response: {response[:100]}...")
-                return self.send_response(response, msg['id'])
+                return self.send_response(response, msg["id"])
             else:
                 logger.warning("⚠️  No response extracted")
                 return False
@@ -379,21 +375,14 @@ class DesktopClaudeClient:
         """Send periodic heartbeat to bus"""
         try:
             payload = {
-                'from': self.client_id,
-                'to': 'server',
-                'type': 'heartbeat',
-                'payload': {
-                    'status': 'alive',
-                    'window_found': self.window is not None
-                },
-                'timestamp': datetime.now(timezone.utc).isoformat()
+                "from": self.client_id,
+                "to": "server",
+                "type": "heartbeat",
+                "payload": {"status": "alive", "window_found": self.window is not None},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-            requests.post(
-                f"{self.bus_url}/api/send",
-                json=payload,
-                timeout=2
-            )
+            requests.post(f"{self.bus_url}/api/send", json=payload, timeout=2)
 
             self.last_heartbeat = time.time()
 
@@ -402,13 +391,13 @@ class DesktopClaudeClient:
 
     def run_daemon(self):
         """Run in daemon mode"""
-        logger.info("="*70)
+        logger.info("=" * 70)
         logger.info("🖥️  DESKTOP CLAUDE CLIENT v2 - DAEMON MODE")
-        logger.info("="*70)
+        logger.info("=" * 70)
         logger.info(f"Message Bus: {self.bus_url}")
         logger.info(f"Client ID: {self.client_id}")
         logger.info("Press Ctrl+C to stop")
-        logger.info("="*70)
+        logger.info("=" * 70)
 
         # Initial window check
         if not self.find_window():
@@ -430,7 +419,7 @@ class DesktopClaudeClient:
                 messages = self.poll_messages()
 
                 for msg in messages:
-                    if msg['type'] == 'command':
+                    if msg["type"] == "command":
                         self.process_command(msg)
 
                 # Send heartbeat every 30s
@@ -453,7 +442,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Desktop Claude Client v2',
+        description="Desktop Claude Client v2",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -468,19 +457,25 @@ Examples:
 
   # Run with debug logging
   python desktop_client_v2.py --daemon --debug
-        """
+        """,
     )
 
-    parser.add_argument('--daemon', action='store_true',
-                       help='Run in daemon mode (listens for commands)')
-    parser.add_argument('--test', action='store_true',
-                       help='Test window detection and activation')
-    parser.add_argument('--send', type=str,
-                       help='Send a single message')
-    parser.add_argument('--debug', action='store_true',
-                       help='Enable debug logging')
-    parser.add_argument('--bus-url', type=str, default='http://localhost:5001',
-                       help='Message bus URL (default: http://localhost:5001)')
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        help="Run in daemon mode (listens for commands)",
+    )
+    parser.add_argument(
+        "--test", action="store_true", help="Test window detection and activation"
+    )
+    parser.add_argument("--send", type=str, help="Send a single message")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--bus-url",
+        type=str,
+        default="http://localhost:5001",
+        help="Message bus URL (default: http://localhost:5001)",
+    )
 
     args = parser.parse_args()
 
@@ -528,5 +523,5 @@ Examples:
         parser.print_help()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

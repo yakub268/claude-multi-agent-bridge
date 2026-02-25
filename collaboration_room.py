@@ -17,18 +17,20 @@ import uuid
 
 class MemberRole(Enum):
     """Claude member roles"""
+
     COORDINATOR = "coordinator"  # Leads the discussion
-    RESEARCHER = "researcher"    # Finds information
-    CODER = "coder"             # Writes code
-    REVIEWER = "reviewer"        # Reviews work
-    TESTER = "tester"           # Tests solutions
-    DOCUMENTER = "documenter"   # Writes docs
+    RESEARCHER = "researcher"  # Finds information
+    CODER = "coder"  # Writes code
+    REVIEWER = "reviewer"  # Reviews work
+    TESTER = "tester"  # Tests solutions
+    DOCUMENTER = "documenter"  # Writes docs
     PARTICIPANT = "participant"  # General participant
 
 
 @dataclass
 class RoomMember:
     """Member of collaboration room"""
+
     client_id: str
     role: MemberRole = MemberRole.PARTICIPANT
     joined_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -39,6 +41,7 @@ class RoomMember:
 @dataclass
 class RoomMessage:
     """Message in collaboration room"""
+
     id: str
     from_client: str
     text: str
@@ -93,9 +96,7 @@ class CollaborationRoom:
         self.members[client_id] = member
 
         # Broadcast join announcement
-        self._broadcast_system_message(
-            f"🎉 {client_id} ({role.value}) joined the room"
-        )
+        self._broadcast_system_message(f"🎉 {client_id} ({role.value}) joined the room")
 
         return True
 
@@ -105,13 +106,15 @@ class CollaborationRoom:
             member = self.members[client_id]
             member.active = False
 
-            self._broadcast_system_message(
-                f"👋 {client_id} left the room"
-            )
+            self._broadcast_system_message(f"👋 {client_id} left the room")
 
-    def send_message(self, from_client: str, text: str,
-                    reply_to: Optional[str] = None,
-                    msg_type: str = "message") -> RoomMessage:
+    def send_message(
+        self,
+        from_client: str,
+        text: str,
+        reply_to: Optional[str] = None,
+        msg_type: str = "message",
+    ) -> RoomMessage:
         """
         Send message to room (broadcasts to all)
 
@@ -138,7 +141,7 @@ class CollaborationRoom:
             timestamp=datetime.now(timezone.utc),
             mentions=mentions,
             reply_to=reply_to,
-            type=msg_type
+            type=msg_type,
         )
 
         # Add to history
@@ -152,9 +155,12 @@ class CollaborationRoom:
 
         return message
 
-    def get_messages(self, since: Optional[datetime] = None,
-                    from_client: Optional[str] = None,
-                    limit: int = 100) -> List[RoomMessage]:
+    def get_messages(
+        self,
+        since: Optional[datetime] = None,
+        from_client: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[RoomMessage]:
         """
         Get room messages
 
@@ -236,10 +242,7 @@ class CollaborationRoom:
             Answer message ID
         """
         msg = self.send_message(
-            from_client,
-            f"💡 {answer}",
-            reply_to=question_id,
-            msg_type="answer"
+            from_client, f"💡 {answer}", reply_to=question_id, msg_type="answer"
         )
         return msg.id
 
@@ -254,29 +257,33 @@ class CollaborationRoom:
         Returns:
             Decision message ID
         """
-        msg = self.send_message(from_client, f"🎯 DECISION: {decision}", msg_type="decision")
+        msg = self.send_message(
+            from_client, f"🎯 DECISION: {decision}", msg_type="decision"
+        )
 
-        self.decisions.append({
-            'id': msg.id,
-            'text': decision,
-            'proposed_by': from_client,
-            'proposed_at': msg.timestamp,
-            'approved_by': set(),
-            'approved': False
-        })
+        self.decisions.append(
+            {
+                "id": msg.id,
+                "text": decision,
+                "proposed_by": from_client,
+                "proposed_at": msg.timestamp,
+                "approved_by": set(),
+                "approved": False,
+            }
+        )
 
         return msg.id
 
     def approve_decision(self, decision_id: str, approver: str):
         """Approve a decision"""
         for decision in self.decisions:
-            if decision['id'] == decision_id:
-                decision['approved_by'].add(approver)
+            if decision["id"] == decision_id:
+                decision["approved_by"].add(approver)
 
                 # Check if majority approved (>50% of active members)
                 active_count = sum(1 for m in self.members.values() if m.active)
-                if len(decision['approved_by']) > active_count / 2:
-                    decision['approved'] = True
+                if len(decision["approved_by"]) > active_count / 2:
+                    decision["approved"] = True
 
                     self._broadcast_system_message(
                         f"✅ Decision approved: {decision['text']}"
@@ -294,29 +301,27 @@ class CollaborationRoom:
         Returns:
             Task message ID
         """
-        msg = self.send_message(
-            from_client,
-            f"📋 @{assignee} {task}",
-            msg_type="task"
-        )
+        msg = self.send_message(from_client, f"📋 @{assignee} {task}", msg_type="task")
 
-        self.tasks.append({
-            'id': msg.id,
-            'text': task,
-            'assignee': assignee,
-            'assigned_by': from_client,
-            'assigned_at': msg.timestamp,
-            'completed': False
-        })
+        self.tasks.append(
+            {
+                "id": msg.id,
+                "text": task,
+                "assignee": assignee,
+                "assigned_by": from_client,
+                "assigned_at": msg.timestamp,
+                "completed": False,
+            }
+        )
 
         return msg.id
 
     def complete_task(self, task_id: str, completer: str):
         """Mark task as completed"""
         for task in self.tasks:
-            if task['id'] == task_id and task['assignee'] == completer:
-                task['completed'] = True
-                task['completed_at'] = datetime.now(timezone.utc)
+            if task["id"] == task_id and task["assignee"] == completer:
+                task["completed"] = True
+                task["completed_at"] = datetime.now(timezone.utc)
 
                 self._broadcast_system_message(
                     f"✅ @{completer} completed: {task['text']}"
@@ -340,24 +345,25 @@ class CollaborationRoom:
         active_members = self.get_active_members()
 
         return {
-            'room_id': self.room_id,
-            'topic': self.topic,
-            'created_at': self.created_at.isoformat(),
-            'total_members': len(self.members),
-            'active_members': len(active_members),
-            'total_messages': len(self.messages),
-            'total_decisions': len(self.decisions),
-            'approved_decisions': sum(1 for d in self.decisions if d['approved']),
-            'total_tasks': len(self.tasks),
-            'completed_tasks': sum(1 for t in self.tasks if t['completed']),
-            'members_by_role': self._get_role_distribution()
+            "room_id": self.room_id,
+            "topic": self.topic,
+            "created_at": self.created_at.isoformat(),
+            "total_members": len(self.members),
+            "active_members": len(active_members),
+            "total_messages": len(self.messages),
+            "total_decisions": len(self.decisions),
+            "approved_decisions": sum(1 for d in self.decisions if d["approved"]),
+            "total_tasks": len(self.tasks),
+            "completed_tasks": sum(1 for t in self.tasks if t["completed"]),
+            "members_by_role": self._get_role_distribution(),
         }
 
     def _extract_mentions(self, text: str) -> Set[str]:
         """Extract @mentions from text"""
         import re
+
         mentions = set()
-        for match in re.finditer(r'@(\w+)', text):
+        for match in re.finditer(r"@(\w+)", text):
             mentions.add(match.group(1))
         return mentions
 
@@ -368,7 +374,7 @@ class CollaborationRoom:
             from_client="SYSTEM",
             text=text,
             timestamp=datetime.now(timezone.utc),
-            type="system"
+            type="system",
         )
         self.messages.append(message)
         self._trigger_callbacks(message)
@@ -428,16 +434,17 @@ class CollaborationHub:
         """List all rooms"""
         return [
             {
-                'room_id': room.room_id,
-                'topic': room.topic,
-                'members': len(room.get_active_members()),
-                'messages': len(room.messages)
+                "room_id": room.room_id,
+                "topic": room.topic,
+                "members": len(room.get_active_members()),
+                "messages": len(room.messages),
             }
             for room in self.rooms.values()
         ]
 
-    def join_room(self, room_id: str, client_id: str,
-                 role: MemberRole = MemberRole.PARTICIPANT) -> bool:
+    def join_room(
+        self, room_id: str, client_id: str, role: MemberRole = MemberRole.PARTICIPANT
+    ) -> bool:
         """Join a room"""
         room = self.get_room(room_id)
         if room:
@@ -449,10 +456,10 @@ class CollaborationHub:
 # Example Usage - Room Full of Claudes Collaborating
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🤝 Collaboration Room - Multiple Claudes Working Together")
-    print("="*70)
+    print("=" * 70)
 
     # Create hub
     hub = CollaborationHub()
@@ -480,7 +487,7 @@ if __name__ == '__main__':
     # Coordinator starts
     room.send_message(
         "claude-code",
-        "Let's build a web scraper. @claude-browser can you research best practices?"
+        "Let's build a web scraper. @claude-browser can you research best practices?",
     )
 
     time.sleep(0.2)
@@ -488,32 +495,28 @@ if __name__ == '__main__':
     # Researcher responds
     room.send_message(
         "claude-browser",
-        "✅ Researching now. BeautifulSoup + requests is standard. Selenium for dynamic pages."
+        "✅ Researching now. BeautifulSoup + requests is standard. Selenium for dynamic pages.",
     )
 
     time.sleep(0.2)
 
     # Ask question
     q_id = room.ask_question(
-        "claude-desktop-1",
-        "Should we use async for multiple pages?"
+        "claude-desktop-1", "Should we use async for multiple pages?"
     )
 
     time.sleep(0.2)
 
     # Answer question
     room.answer_question(
-        "claude-browser",
-        q_id,
-        "Yes! Use aiohttp + asyncio for 10x faster scraping"
+        "claude-browser", q_id, "Yes! Use aiohttp + asyncio for 10x faster scraping"
     )
 
     time.sleep(0.2)
 
     # Propose decision
     dec_id = room.propose_decision(
-        "claude-code",
-        "Use BeautifulSoup + aiohttp for async scraping"
+        "claude-code", "Use BeautifulSoup + aiohttp for async scraping"
     )
 
     time.sleep(0.2)
@@ -534,7 +537,7 @@ if __name__ == '__main__':
 
     # Complete tasks
     room.send_message("claude-desktop-1", "Done! Scraper class ready for review.")
-    room.complete_task(room.tasks[0]['id'], "claude-desktop-1")
+    room.complete_task(room.tasks[0]["id"], "claude-desktop-1")
 
     # Show conversation
     print("\n📜 Conversation history:")

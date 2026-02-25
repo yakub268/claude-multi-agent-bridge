@@ -14,6 +14,7 @@ from threading import Thread, Lock
 
 class RetentionPolicy(Enum):
     """Message retention policies"""
+
     IMMEDIATE = "immediate"  # Delete after delivery
     SHORT = "short"  # 1 hour
     MEDIUM = "medium"  # 24 hours
@@ -35,6 +36,7 @@ class TTLConfig:
             on_expire=lambda msg: print(f"Expired: {msg['id']}")
         )
     """
+
     message_type: str
     ttl_seconds: int
     policy: RetentionPolicy = RetentionPolicy.MEDIUM
@@ -60,7 +62,7 @@ class MessageTTLManager:
         RetentionPolicy.SHORT: 3600,  # 1 hour
         RetentionPolicy.MEDIUM: 86400,  # 24 hours
         RetentionPolicy.LONG: 604800,  # 7 days
-        RetentionPolicy.PERMANENT: -1  # Never expire
+        RetentionPolicy.PERMANENT: -1,  # Never expire
     }
 
     def __init__(self, default_ttl: int = 86400):
@@ -75,11 +77,7 @@ class MessageTTLManager:
         self.expiry_heap = []  # Min-heap of (expiry_time, message_id)
         self.messages: Dict[str, Dict] = {}  # message_id -> message
         self.lock = Lock()
-        self.stats = {
-            'total_expired': 0,
-            'total_archived': 0,
-            'by_type': {}
-        }
+        self.stats = {"total_expired": 0, "total_archived": 0, "by_type": {}}
         self.archived_messages = []
         self._cleanup_running = False
 
@@ -95,8 +93,8 @@ class MessageTTLManager:
             message: Message dict with id, type, timestamp
         """
         with self.lock:
-            message_id = message['id']
-            message_type = message.get('type', 'default')
+            message_id = message["id"]
+            message_type = message.get("type", "default")
 
             # Get TTL for this message type
             config = self.ttl_configs.get(message_type)
@@ -112,7 +110,7 @@ class MessageTTLManager:
                 return
 
             # Calculate expiry time
-            timestamp = datetime.fromisoformat(message['timestamp'])
+            timestamp = datetime.fromisoformat(message["timestamp"])
             expiry_time = timestamp + timedelta(seconds=ttl)
             expiry_unix = expiry_time.timestamp()
 
@@ -177,18 +175,20 @@ class MessageTTLManager:
 
                 # Get message
                 message = self.messages[message_id]
-                message_type = message.get('type', 'default')
+                message_type = message.get("type", "default")
 
                 # Get config
                 config = self.ttl_configs.get(message_type)
 
                 # Archive if configured
                 if config and config.archive_before_delete:
-                    self.archived_messages.append({
-                        **message,
-                        'expired_at': datetime.now(timezone.utc).isoformat()
-                    })
-                    self.stats['total_archived'] += 1
+                    self.archived_messages.append(
+                        {
+                            **message,
+                            "expired_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    self.stats["total_archived"] += 1
 
                     # Keep only last 1000 archived
                     if len(self.archived_messages) > 1000:
@@ -206,9 +206,11 @@ class MessageTTLManager:
 
                 # Update stats
                 expired_count += 1
-                self.stats['total_expired'] += 1
+                self.stats["total_expired"] += 1
                 type_key = message_type
-                self.stats['by_type'][type_key] = self.stats['by_type'].get(type_key, 0) + 1
+                self.stats["by_type"][type_key] = (
+                    self.stats["by_type"].get(type_key, 0) + 1
+                )
 
         return expired_count
 
@@ -247,9 +249,9 @@ class MessageTTLManager:
         with self.lock:
             return {
                 **self.stats,
-                'active_messages': len(self.messages),
-                'pending_expiry': len(self.expiry_heap),
-                'archived_count': len(self.archived_messages)
+                "active_messages": len(self.messages),
+                "pending_expiry": len(self.expiry_heap),
+                "archived_count": len(self.archived_messages),
             }
 
     def get_expired_messages(self, limit: int = 100) -> List[Dict]:
@@ -285,10 +287,9 @@ class MessageTTLManager:
 
                 if message_id in self.messages:
                     message = self.messages[message_id]
-                    expiring.append({
-                        **message,
-                        'expires_in': expiry_time - time.time()
-                    })
+                    expiring.append(
+                        {**message, "expires_in": expiry_time - time.time()}
+                    )
 
         return expiring
 
@@ -326,6 +327,7 @@ class MessageTTLManager:
 # Pre-configured Policies
 # ============================================================================
 
+
 class StandardPolicies:
     """Standard TTL policies for common message types"""
 
@@ -336,7 +338,7 @@ class StandardPolicies:
             message_type="error",
             ttl_seconds=3600,
             policy=RetentionPolicy.SHORT,
-            archive_before_delete=True
+            archive_before_delete=True,
         )
 
     @staticmethod
@@ -346,7 +348,7 @@ class StandardPolicies:
             message_type="log",
             ttl_seconds=86400,
             policy=RetentionPolicy.MEDIUM,
-            archive_before_delete=False
+            archive_before_delete=False,
         )
 
     @staticmethod
@@ -356,7 +358,7 @@ class StandardPolicies:
             message_type="command",
             ttl_seconds=604800,
             policy=RetentionPolicy.LONG,
-            archive_before_delete=True
+            archive_before_delete=True,
         )
 
     @staticmethod
@@ -366,7 +368,7 @@ class StandardPolicies:
             message_type="notification",
             ttl_seconds=0,
             policy=RetentionPolicy.IMMEDIATE,
-            archive_before_delete=False
+            archive_before_delete=False,
         )
 
     @staticmethod
@@ -376,7 +378,7 @@ class StandardPolicies:
             message_type="audit",
             ttl_seconds=-1,
             policy=RetentionPolicy.PERMANENT,
-            archive_before_delete=False
+            archive_before_delete=False,
         )
 
 
@@ -384,10 +386,10 @@ class StandardPolicies:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("⏱️  Message TTL Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create manager
     ttl_manager = MessageTTLManager(default_ttl=86400)
@@ -401,42 +403,44 @@ if __name__ == '__main__':
     def on_expire(msg):
         print(f"   📬 Custom expiry callback: {msg['id']} expired")
 
-    ttl_manager.register_policy(TTLConfig(
-        message_type="custom",
-        ttl_seconds=5,  # 5 seconds for testing
-        on_expire=on_expire,
-        archive_before_delete=True
-    ))
+    ttl_manager.register_policy(
+        TTLConfig(
+            message_type="custom",
+            ttl_seconds=5,  # 5 seconds for testing
+            on_expire=on_expire,
+            archive_before_delete=True,
+        )
+    )
 
     # Add messages
     print("\n📝 Adding messages...")
 
     # Error message (1 hour TTL)
     error_msg = {
-        'id': 'msg-error-1',
-        'type': 'error',
-        'payload': {'error': 'Test error'},
-        'timestamp': datetime.now(timezone.utc).isoformat()
+        "id": "msg-error-1",
+        "type": "error",
+        "payload": {"error": "Test error"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     ttl_manager.add_message(error_msg)
     print("   Added: error message (1 hour TTL)")
 
     # Custom message (5 second TTL for testing)
     custom_msg = {
-        'id': 'msg-custom-1',
-        'type': 'custom',
-        'payload': {'data': 'Test'},
-        'timestamp': datetime.now(timezone.utc).isoformat()
+        "id": "msg-custom-1",
+        "type": "custom",
+        "payload": {"data": "Test"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     ttl_manager.add_message(custom_msg)
     print("   Added: custom message (5 second TTL)")
 
     # Log message (24 hour TTL)
     log_msg = {
-        'id': 'msg-log-1',
-        'type': 'log',
-        'payload': {'message': 'Test log'},
-        'timestamp': datetime.now(timezone.utc).isoformat()
+        "id": "msg-log-1",
+        "type": "log",
+        "payload": {"message": "Test log"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     ttl_manager.add_message(log_msg)
     print("   Added: log message (24 hour TTL)")
@@ -476,7 +480,7 @@ if __name__ == '__main__':
 
     # Test extend TTL
     print("\n➕ Extending TTL for error message...")
-    extended = ttl_manager.extend_ttl('msg-error-1', 3600)
+    extended = ttl_manager.extend_ttl("msg-error-1", 3600)
     print(f"   Extended: {extended}")
 
     print("\n✅ Test complete")

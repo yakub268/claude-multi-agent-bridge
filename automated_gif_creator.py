@@ -7,6 +7,7 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 import os
 
+
 class DemoGifCreator:
     def __init__(self):
         self.client = CodeClient()
@@ -14,9 +15,16 @@ class DemoGifCreator:
         self.output_dir = "demo_frames"
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def create_text_frame(self, text, width=800, height=100, bg_color=(30, 30, 30), text_color=(255, 255, 255)):
+    def create_text_frame(
+        self,
+        text,
+        width=800,
+        height=100,
+        bg_color=(30, 30, 30),
+        text_color=(255, 255, 255),
+    ):
         """Create a text-only frame"""
-        img = Image.new('RGB', (width, height), bg_color)
+        img = Image.new("RGB", (width, height), bg_color)
         draw = ImageDraw.Draw(img)
 
         # Try to use a nice font, fall back to default
@@ -44,15 +52,21 @@ class DemoGifCreator:
         self.screenshots.append(frame1)
 
         # Frame 2: Sending prompt
-        frame2 = self.create_text_frame("Sending: What is the capital of France?", height=150)
+        frame2 = self.create_text_frame(
+            "Sending: What is the capital of France?", height=150
+        )
         self.screenshots.append(frame2)
 
         # Send the actual message
         print("Sending message to Browser Claude...")
-        self.client.send('browser', 'command', {
-            'action': 'run_prompt',
-            'text': 'What is the capital of France? Reply with just the city name.'
-        })
+        self.client.send(
+            "browser",
+            "command",
+            {
+                "action": "run_prompt",
+                "text": "What is the capital of France? Reply with just the city name.",
+            },
+        )
 
         # Frame 3: Waiting
         frame3 = self.create_text_frame("Waiting for Browser Claude...", height=150)
@@ -66,8 +80,8 @@ class DemoGifCreator:
             messages = self.client.poll()
 
             for msg in messages:
-                if msg.get('type') == 'claude_response':
-                    response_text = msg['payload']['response']
+                if msg.get("type") == "claude_response":
+                    response_text = msg["payload"]["response"]
                     break
 
             if response_text:
@@ -79,10 +93,14 @@ class DemoGifCreator:
             self.screenshots.append(frame4)
 
             # Frame 5: Success
-            frame5 = self.create_text_frame("✅ Communication Successful!", height=150, bg_color=(0, 100, 0))
+            frame5 = self.create_text_frame(
+                "✅ Communication Successful!", height=150, bg_color=(0, 100, 0)
+            )
             self.screenshots.append(frame5)
         else:
-            frame4 = self.create_text_frame("⏰ Timeout - no response", height=150, bg_color=(100, 0, 0))
+            frame4 = self.create_text_frame(
+                "⏰ Timeout - no response", height=150, bg_color=(100, 0, 0)
+            )
             self.screenshots.append(frame4)
 
         # Create GIF
@@ -103,17 +121,18 @@ class DemoGifCreator:
             save_all=True,
             append_images=self.screenshots[1:],
             duration=2000,  # 2 seconds per frame
-            loop=0
+            loop=0,
         )
 
         print(f"✅ GIF created: {output_path}")
         print(f"   {len(self.screenshots)} frames")
         print(f"   Total duration: {len(self.screenshots) * 2} seconds")
 
+
 def main():
-    print("="*70)
+    print("=" * 70)
     print("🎬 AUTOMATED DEMO GIF CREATOR")
-    print("="*70)
+    print("=" * 70)
     print()
     print("Requirements:")
     print("  1. server.py running (python server.py)")
@@ -126,9 +145,10 @@ def main():
     creator.create_demo()
 
     print()
-    print("="*70)
+    print("=" * 70)
     print("Done! Check demo.gi")
-    print("="*70)
+    print("=" * 70)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

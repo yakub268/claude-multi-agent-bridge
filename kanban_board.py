@@ -15,6 +15,7 @@ from enum import Enum
 
 class TaskStatus(Enum):
     """Task status states"""
+
     TODO = "todo"
     IN_PROGRESS = "in_progress"
     REVIEW = "review"
@@ -25,6 +26,7 @@ class TaskStatus(Enum):
 
 class TaskPriority(Enum):
     """Task priority levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -34,6 +36,7 @@ class TaskPriority(Enum):
 @dataclass
 class KanbanTask:
     """Task on kanban board"""
+
     id: str
     title: str
     description: str
@@ -55,6 +58,7 @@ class KanbanTask:
 @dataclass
 class BoardColumn:
     """Column on kanban board"""
+
     status: TaskStatus
     name: str
     tasks: List[str] = field(default_factory=list)  # Task IDs
@@ -87,22 +91,30 @@ class KanbanBoard:
         # Columns
         self.columns: Dict[TaskStatus, BoardColumn] = {
             TaskStatus.TODO: BoardColumn(TaskStatus.TODO, "To Do", wip_limit=None),
-            TaskStatus.IN_PROGRESS: BoardColumn(TaskStatus.IN_PROGRESS, "In Progress", wip_limit=5),
+            TaskStatus.IN_PROGRESS: BoardColumn(
+                TaskStatus.IN_PROGRESS, "In Progress", wip_limit=5
+            ),
             TaskStatus.REVIEW: BoardColumn(TaskStatus.REVIEW, "Review", wip_limit=3),
-            TaskStatus.BLOCKED: BoardColumn(TaskStatus.BLOCKED, "Blocked", wip_limit=None),
+            TaskStatus.BLOCKED: BoardColumn(
+                TaskStatus.BLOCKED, "Blocked", wip_limit=None
+            ),
             TaskStatus.DONE: BoardColumn(TaskStatus.DONE, "Done", wip_limit=None),
         }
 
         # Members
         self.members: Set[str] = set()
 
-    def create_task(self, title: str, description: str,
-                   created_by: str,
-                   priority: TaskPriority = TaskPriority.MEDIUM,
-                   assignee: Optional[str] = None,
-                   due_date: Optional[datetime] = None,
-                   estimated_minutes: int = 0,
-                   tags: Set[str] = None) -> str:
+    def create_task(
+        self,
+        title: str,
+        description: str,
+        created_by: str,
+        priority: TaskPriority = TaskPriority.MEDIUM,
+        assignee: Optional[str] = None,
+        due_date: Optional[datetime] = None,
+        estimated_minutes: int = 0,
+        tags: Set[str] = None,
+    ) -> str:
         """
         Create new task
 
@@ -131,7 +143,7 @@ class KanbanBoard:
             created_by=created_by,
             due_date=due_date,
             estimated_minutes=estimated_minutes,
-            tags=tags or set()
+            tags=tags or set(),
         )
 
         self.tasks[task_id] = task
@@ -139,8 +151,9 @@ class KanbanBoard:
 
         return task_id
 
-    def move_task(self, task_id: str, new_status: TaskStatus,
-                 moved_by: str = "") -> bool:
+    def move_task(
+        self, task_id: str, new_status: TaskStatus, moved_by: str = ""
+    ) -> bool:
         """
         Move task to new status
 
@@ -162,7 +175,9 @@ class KanbanBoard:
         if new_status in [TaskStatus.IN_PROGRESS, TaskStatus.REVIEW]:
             column = self.columns[new_status]
             if column.wip_limit and len(column.tasks) >= column.wip_limit:
-                raise Exception(f"WIP limit reached for {new_status.value}: {column.wip_limit}")
+                raise Exception(
+                    f"WIP limit reached for {new_status.value}: {column.wip_limit}"
+                )
 
         # Check dependencies
         if new_status == TaskStatus.IN_PROGRESS:
@@ -184,7 +199,7 @@ class KanbanBoard:
         self.add_comment(
             task_id,
             moved_by or "SYSTEM",
-            f"Moved from {old_status.value} to {new_status.value}"
+            f"Moved from {old_status.value} to {new_status.value}",
         )
 
         return True
@@ -202,7 +217,8 @@ class KanbanBoard:
         self.add_comment(
             task_id,
             "SYSTEM",
-            f"Assigned to {assignee}" + (f" (was: {old_assignee})" if old_assignee else "")
+            f"Assigned to {assignee}"
+            + (f" (was: {old_assignee})" if old_assignee else ""),
         )
 
         return True
@@ -237,12 +253,14 @@ class KanbanBoard:
         if not task:
             return
 
-        task.comments.append({
-            'id': str(uuid.uuid4())[:8],
-            'author': author,
-            'text': text,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        })
+        task.comments.append(
+            {
+                "id": str(uuid.uuid4())[:8],
+                "author": author,
+                "text": text,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         task.updated_at = datetime.now(timezone.utc)
 
@@ -270,7 +288,8 @@ class KanbanBoard:
         """Get overdue tasks"""
         now = datetime.now(timezone.utc)
         return [
-            t for t in self.tasks.values()
+            t
+            for t in self.tasks.values()
             if t.due_date and t.due_date < now and t.status != TaskStatus.DONE
         ]
 
@@ -289,13 +308,13 @@ class KanbanBoard:
 
         if total_tasks == 0:
             return {
-                'total_tasks': 0,
-                'by_status': {},
-                'by_priority': {},
-                'by_assignee': {},
-                'completion_rate': 0,
-                'avg_time_per_task': 0,
-                'total_time_spent': 0
+                "total_tasks": 0,
+                "by_status": {},
+                "by_priority": {},
+                "by_assignee": {},
+                "completion_rate": 0,
+                "avg_time_per_task": 0,
+                "total_time_spent": 0,
             }
 
         # Count by status (only for columns that exist)
@@ -335,39 +354,39 @@ class KanbanBoard:
         blocked = len(self.get_blocked_tasks())
 
         return {
-            'total_tasks': total_tasks,
-            'by_status': by_status,
-            'by_priority': by_priority,
-            'by_assignee': by_assignee,
-            'completion_rate': completion_rate,
-            'avg_time_per_task': avg_time,
-            'total_time_spent': total_time,
-            'overdue_tasks': overdue,
-            'blocked_tasks': blocked,
-            'active_members': len(by_assignee)
+            "total_tasks": total_tasks,
+            "by_status": by_status,
+            "by_priority": by_priority,
+            "by_assignee": by_assignee,
+            "completion_rate": completion_rate,
+            "avg_time_per_task": avg_time,
+            "total_time_spent": total_time,
+            "overdue_tasks": overdue,
+            "blocked_tasks": blocked,
+            "active_members": len(by_assignee),
         }
 
     def export_board(self) -> Dict:
         """Export board to JSON"""
         return {
-            'board_id': self.board_id,
-            'name': self.name,
-            'created_at': self.created_at.isoformat(),
-            'members': list(self.members),
-            'tasks': [
+            "board_id": self.board_id,
+            "name": self.name,
+            "created_at": self.created_at.isoformat(),
+            "members": list(self.members),
+            "tasks": [
                 {
                     **asdict(task),
-                    'created_at': task.created_at.isoformat(),
-                    'updated_at': task.updated_at.isoformat(),
-                    'due_date': task.due_date.isoformat() if task.due_date else None,
-                    'status': task.status.value,
-                    'priority': task.priority.value,
-                    'tags': list(task.tags),
-                    'dependencies': list(task.dependencies)
+                    "created_at": task.created_at.isoformat(),
+                    "updated_at": task.updated_at.isoformat(),
+                    "due_date": task.due_date.isoformat() if task.due_date else None,
+                    "status": task.status.value,
+                    "priority": task.priority.value,
+                    "tags": list(task.tags),
+                    "dependencies": list(task.dependencies),
                 }
                 for task in self.tasks.values()
             ],
-            'analytics': self.get_analytics()
+            "analytics": self.get_analytics(),
         }
 
 
@@ -392,17 +411,17 @@ class KanbanBoardManager:
         """List all boards"""
         return [
             {
-                'board_id': board.board_id,
-                'name': board.name,
-                'total_tasks': len(board.tasks),
-                'done_tasks': len(board.get_tasks_by_status(TaskStatus.DONE)),
-                'members': len(board.members)
+                "board_id": board.board_id,
+                "name": board.name,
+                "total_tasks": len(board.tasks),
+                "done_tasks": len(board.get_tasks_by_status(TaskStatus.DONE)),
+                "members": len(board.members),
             }
             for board in self.boards.values()
         ]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("📋 Kanban Board for Multi-Claude Task Management")
     print("=" * 80)
@@ -423,7 +442,7 @@ if __name__ == '__main__':
         created_by="claude-code",
         priority=TaskPriority.HIGH,
         assignee="claude-desktop-1",
-        estimated_minutes=30
+        estimated_minutes=30,
     )
 
     task2 = board.create_task(
@@ -432,7 +451,7 @@ if __name__ == '__main__':
         created_by="claude-code",
         priority=TaskPriority.HIGH,
         assignee="claude-desktop-1",
-        estimated_minutes=120
+        estimated_minutes=120,
     )
 
     task3 = board.create_task(
@@ -441,7 +460,7 @@ if __name__ == '__main__':
         created_by="claude-code",
         priority=TaskPriority.MEDIUM,
         assignee="claude-desktop-2",
-        estimated_minutes=60
+        estimated_minutes=60,
     )
 
     # Add dependency
@@ -457,7 +476,9 @@ if __name__ == '__main__':
     board.move_task(task1, TaskStatus.DONE, "claude-desktop-1")
 
     board.move_task(task2, TaskStatus.IN_PROGRESS, "claude-desktop-1")
-    board.add_comment(task2, "claude-desktop-1", "RSI indicator complete, working on MACD")
+    board.add_comment(
+        task2, "claude-desktop-1", "RSI indicator complete, working on MACD"
+    )
 
     # Analytics
     print("\n📊 Board Analytics:")
@@ -467,12 +488,12 @@ if __name__ == '__main__':
             print(f"   {key}: {value}")
 
     print("\n📈 Tasks by Status:")
-    for status, count in analytics['by_status'].items():
+    for status, count in analytics["by_status"].items():
         if count > 0:
             print(f"   {status}: {count}")
 
     print("\n👥 Tasks by Assignee:")
-    for assignee, count in analytics['by_assignee'].items():
+    for assignee, count in analytics["by_assignee"].items():
         print(f"   {assignee}: {count}")
 
     # Show blocked tasks

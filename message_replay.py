@@ -14,6 +14,7 @@ from pathlib import Path
 @dataclass
 class MessageRecord:
     """Complete message record with metadata"""
+
     id: str
     from_client: str
     to_client: str
@@ -48,7 +49,8 @@ class MessageReplay:
     def _init_db(self):
         """Initialize database"""
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS message_history (
                 id TEXT PRIMARY KEY,
                 from_client TEXT NOT NULL,
@@ -67,9 +69,11 @@ class MessageReplay:
                 INDEX idx_from_to (from_client, to_client),
                 INDEX idx_type (type)
             )
-        """)
+        """
+        )
 
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS message_flows (
                 flow_id TEXT PRIMARY KEY,
                 request_id TEXT,
@@ -81,7 +85,8 @@ class MessageReplay:
                 FOREIGN KEY (request_id) REFERENCES message_history(id),
                 FOREIGN KEY (response_id) REFERENCES message_history(id)
             )
-        """)
+        """
+        )
 
         conn.commit()
         conn.close()
@@ -95,34 +100,40 @@ class MessageReplay:
         """
         conn = sqlite3.connect(self.db_path)
 
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO message_history
             (id, from_client, to_client, type, payload, timestamp,
              delivered, acked, latency_ms, error, replay_count, recorded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            message.id,
-            message.from_client,
-            message.to_client,
-            message.type,
-            json.dumps(message.payload),
-            message.timestamp,
-            1 if message.delivered else 0,
-            1 if message.acked else 0,
-            message.latency_ms,
-            message.error,
-            message.replay_count,
-            datetime.now(timezone.utc).isoformat()
-        ))
+        """,
+            (
+                message.id,
+                message.from_client,
+                message.to_client,
+                message.type,
+                json.dumps(message.payload),
+                message.timestamp,
+                1 if message.delivered else 0,
+                1 if message.acked else 0,
+                message.latency_ms,
+                message.error,
+                message.replay_count,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
 
         conn.commit()
         conn.close()
 
-    def get_history(self, limit: int = 100,
-                   from_client: Optional[str] = None,
-                   to_client: Optional[str] = None,
-                   msg_type: Optional[str] = None,
-                   since: Optional[str] = None) -> List[MessageRecord]:
+    def get_history(
+        self,
+        limit: int = 100,
+        from_client: Optional[str] = None,
+        to_client: Optional[str] = None,
+        msg_type: Optional[str] = None,
+        since: Optional[str] = None,
+    ) -> List[MessageRecord]:
         """
         Get message history with filters
 
@@ -166,53 +177,62 @@ class MessageReplay:
 
         messages = []
         for row in rows:
-            messages.append(MessageRecord(
-                id=row['id'],
-                from_client=row['from_client'],
-                to_client=row['to_client'],
-                type=row['type'],
-                payload=json.loads(row['payload']),
-                timestamp=row['timestamp'],
-                delivered=bool(row['delivered']),
-                acked=bool(row['acked']),
-                latency_ms=row['latency_ms'],
-                error=row['error'],
-                replay_count=row['replay_count']
-            ))
+            messages.append(
+                MessageRecord(
+                    id=row["id"],
+                    from_client=row["from_client"],
+                    to_client=row["to_client"],
+                    type=row["type"],
+                    payload=json.loads(row["payload"]),
+                    timestamp=row["timestamp"],
+                    delivered=bool(row["delivered"]),
+                    acked=bool(row["acked"]),
+                    latency_ms=row["latency_ms"],
+                    error=row["error"],
+                    replay_count=row["replay_count"],
+                )
+            )
 
         conn.close()
         return list(reversed(messages))
 
-    def get_conversation(self, client1: str, client2: str, limit: int = 50) -> List[MessageRecord]:
+    def get_conversation(
+        self, client1: str, client2: str, limit: int = 50
+    ) -> List[MessageRecord]:
         """Get conversation between two clients"""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
 
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
             SELECT * FROM message_history
             WHERE (from_client = ? AND to_client = ?)
                OR (from_client = ? AND to_client = ?)
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (client1, client2, client2, client1, limit))
+        """,
+            (client1, client2, client2, client1, limit),
+        )
 
         rows = cursor.fetchall()
         messages = []
 
         for row in rows:
-            messages.append(MessageRecord(
-                id=row['id'],
-                from_client=row['from_client'],
-                to_client=row['to_client'],
-                type=row['type'],
-                payload=json.loads(row['payload']),
-                timestamp=row['timestamp'],
-                delivered=bool(row['delivered']),
-                acked=bool(row['acked']),
-                latency_ms=row['latency_ms'],
-                error=row['error'],
-                replay_count=row['replay_count']
-            ))
+            messages.append(
+                MessageRecord(
+                    id=row["id"],
+                    from_client=row["from_client"],
+                    to_client=row["to_client"],
+                    type=row["type"],
+                    payload=json.loads(row["payload"]),
+                    timestamp=row["timestamp"],
+                    delivered=bool(row["delivered"]),
+                    acked=bool(row["acked"]),
+                    latency_ms=row["latency_ms"],
+                    error=row["error"],
+                    replay_count=row["replay_count"],
+                )
+            )
 
         conn.close()
         return list(reversed(messages))
@@ -232,8 +252,7 @@ class MessageReplay:
         conn.row_factory = sqlite3.Row
 
         cursor = conn.execute(
-            "SELECT * FROM message_history WHERE id = ?",
-            (message_id,)
+            "SELECT * FROM message_history WHERE id = ?", (message_id,)
         )
         row = cursor.fetchone()
 
@@ -243,14 +262,14 @@ class MessageReplay:
 
         # Reconstruct message
         message = {
-            'id': f"{row['id']}-replay",
-            'from': row['from_client'],
-            'to': row['to_client'],
-            'type': row['type'],
-            'payload': json.loads(row['payload']),
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            '_replay': True,
-            '_original_id': row['id']
+            "id": f"{row['id']}-replay",
+            "from": row["from_client"],
+            "to": row["to_client"],
+            "type": row["type"],
+            "payload": json.loads(row["payload"]),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "_replay": True,
+            "_original_id": row["id"],
         }
 
         # Send message
@@ -260,7 +279,7 @@ class MessageReplay:
             # Update replay count
             conn.execute(
                 "UPDATE message_history SET replay_count = replay_count + 1 WHERE id = ?",
-                (message_id,)
+                (message_id,),
             )
             conn.commit()
             conn.close()
@@ -272,7 +291,7 @@ class MessageReplay:
             print(f"❌ Replay failed: {e}")
             return False
 
-    def export_timeline(self, output_path: str, format: str = 'json'):
+    def export_timeline(self, output_path: str, format: str = "json"):
         """
         Export message timeline
 
@@ -282,44 +301,57 @@ class MessageReplay:
         """
         messages = self.get_history(limit=10000)
 
-        if format == 'json':
+        if format == "json":
             self._export_json(messages, output_path)
-        elif format == 'csv':
+        elif format == "csv":
             self._export_csv(messages, output_path)
-        elif format == 'html':
+        elif format == "html":
             self._export_html(messages, output_path)
 
     def _export_json(self, messages: List[MessageRecord], output_path: str):
         """Export to JSON"""
         data = [asdict(msg) for msg in messages]
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(data, f, indent=2)
 
     def _export_csv(self, messages: List[MessageRecord], output_path: str):
         """Export to CSV"""
         import csv
 
-        with open(output_path, 'w', newline='') as f:
+        with open(output_path, "w", newline="") as f:
             writer = csv.writer(f)
 
             # Header
-            writer.writerow(['ID', 'From', 'To', 'Type', 'Timestamp',
-                           'Delivered', 'Acked', 'Latency (ms)', 'Error'])
+            writer.writerow(
+                [
+                    "ID",
+                    "From",
+                    "To",
+                    "Type",
+                    "Timestamp",
+                    "Delivered",
+                    "Acked",
+                    "Latency (ms)",
+                    "Error",
+                ]
+            )
 
             # Rows
             for msg in messages:
-                writer.writerow([
-                    msg.id,
-                    msg.from_client,
-                    msg.to_client,
-                    msg.type,
-                    msg.timestamp,
-                    msg.delivered,
-                    msg.acked,
-                    msg.latency_ms,
-                    msg.error or ''
-                ])
+                writer.writerow(
+                    [
+                        msg.id,
+                        msg.from_client,
+                        msg.to_client,
+                        msg.type,
+                        msg.timestamp,
+                        msg.delivered,
+                        msg.acked,
+                        msg.latency_ms,
+                        msg.error or "",
+                    ]
+                )
 
     def _export_html(self, messages: List[MessageRecord], output_path: str):
         """Export to HTML timeline"""
@@ -355,7 +387,9 @@ class MessageReplay:
             <span class="type">{msg.type}</span>
 """
             if msg.latency_ms:
-                html += f'            <span class="latency">{msg.latency_ms:.1f}ms</span>\n'
+                html += (
+                    f'            <span class="latency">{msg.latency_ms:.1f}ms</span>\n'
+                )
 
             if msg.error:
                 html += f'            <span class="error">Error: {msg.error}</span>\n'
@@ -368,7 +402,7 @@ class MessageReplay:
 </html>
 """
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(html)
 
     def analyze_performance(self) -> Dict:
@@ -379,7 +413,8 @@ class MessageReplay:
             Performance metrics
         """
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
             SELECT
                 COUNT(*) as total,
                 AVG(latency_ms) as avg_latency,
@@ -390,41 +425,44 @@ class MessageReplay:
                 COUNT(CASE WHEN error IS NOT NULL THEN 1 END) as errors
             FROM message_history
             WHERE latency_ms IS NOT NULL
-        """)
+        """
+        )
 
         row = cursor.fetchone()
         conn.close()
 
         return {
-            'total_messages': row[0],
-            'avg_latency_ms': row[1] or 0,
-            'min_latency_ms': row[2] or 0,
-            'max_latency_ms': row[3] or 0,
-            'delivery_rate': row[4] / row[0] if row[0] > 0 else 0,
-            'ack_rate': row[5] / row[0] if row[0] > 0 else 0,
-            'error_rate': row[6] / row[0] if row[0] > 0 else 0
+            "total_messages": row[0],
+            "avg_latency_ms": row[1] or 0,
+            "min_latency_ms": row[2] or 0,
+            "max_latency_ms": row[3] or 0,
+            "delivery_rate": row[4] / row[0] if row[0] > 0 else 0,
+            "ack_rate": row[5] / row[0] if row[0] > 0 else 0,
+            "error_rate": row[6] / row[0] if row[0] > 0 else 0,
         }
 
     def get_stats(self) -> Dict:
         """Get replay statistics"""
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
             SELECT
                 COUNT(*) as total,
                 COUNT(DISTINCT from_client) as unique_senders,
                 COUNT(DISTINCT to_client) as unique_recipients,
                 SUM(replay_count) as total_replays
             FROM message_history
-        """)
+        """
+        )
 
         row = cursor.fetchone()
         conn.close()
 
         return {
-            'total_messages': row[0],
-            'unique_senders': row[1],
-            'unique_recipients': row[2],
-            'total_replays': row[3]
+            "total_messages": row[0],
+            "unique_senders": row[1],
+            "unique_recipients": row[2],
+            "total_replays": row[3],
         }
 
 
@@ -432,10 +470,10 @@ class MessageReplay:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🔍 Message Replay & History Viewer Test")
-    print("="*70)
+    print("=" * 70)
 
     replay = MessageReplay(db_path="test_history.db")
 
@@ -448,21 +486,21 @@ if __name__ == '__main__':
             from_client="code",
             to_client="browser",
             type="command",
-            payload={'text': 'What is 2+2?'},
+            payload={"text": "What is 2+2?"},
             timestamp=datetime.now(timezone.utc).isoformat(),
             delivered=True,
-            latency_ms=45.2
+            latency_ms=45.2,
         ),
         MessageRecord(
             id="msg-2",
             from_client="browser",
             to_client="code",
             type="claude_response",
-            payload={'response': '4'},
+            payload={"response": "4"},
             timestamp=datetime.now(timezone.utc).isoformat(),
             delivered=True,
             acked=True,
-            latency_ms=1200.5
+            latency_ms=1200.5,
         ),
     ]
 
@@ -478,7 +516,7 @@ if __name__ == '__main__':
 
     # Get conversation
     print("\n3️⃣ Getting conversation...")
-    conversation = replay.get_conversation('code', 'browser')
+    conversation = replay.get_conversation("code", "browser")
     print(f"   Found {len(conversation)} messages")
 
     # Performance analysis
@@ -489,8 +527,8 @@ if __name__ == '__main__':
 
     # Export timeline
     print("\n5️⃣ Exporting timeline...")
-    replay.export_timeline('timeline.json', format='json')
-    replay.export_timeline('timeline.html', format='html')
+    replay.export_timeline("timeline.json", format="json")
+    replay.export_timeline("timeline.html", format="html")
     print("   Exported: timeline.json, timeline.html")
 
     # Stats

@@ -2,6 +2,7 @@
 Multi-Claude Message Bus v2
 Enhanced with: logging, error handling, persistence, metrics
 """
+
 import os
 import json
 import time
@@ -18,30 +19,23 @@ from flask_cors import CORS
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler('message_bus.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("message_bus.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Restrict CORS to localhost only for security
-CORS(app, resources={
-    r"/*": {
-        "origins": ["http://localhost:*", "http://127.0.0.1:*"]
-    }
-})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:*", "http://127.0.0.1:*"]}})
 
 # Configuration
 MAX_QUEUE_SIZE = 500
-DB_PATH = 'message_bus.db'
+DB_PATH = "message_bus.db"
 PERSIST_ENABLED = True
 
 # Security: Admin token from environment variable or auto-generated
-ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', secrets.token_urlsafe(32))
-if not os.getenv('ADMIN_TOKEN'):
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", secrets.token_urlsafe(32))
+if not os.getenv("ADMIN_TOKEN"):
     logger.warning(
         "No ADMIN_TOKEN environment variable set. Using auto-generated token.\n"
         "Set ADMIN_TOKEN environment variable in production.\n"
@@ -54,10 +48,10 @@ message_lock = threading.Lock()
 
 # Metrics
 metrics = {
-    'total_messages': 0,
-    'messages_by_client': {},
-    'errors': 0,
-    'start_time': datetime.utcnow().isoformat()
+    "total_messages": 0,
+    "messages_by_client": {},
+    "errors": 0,
+    "start_time": datetime.utcnow().isoformat(),
 }
 metrics_lock = threading.Lock()
 
@@ -72,7 +66,8 @@ class Database:
     def init_db(self):
         """Create tables if they don't exist"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS messages (
                     id TEXT PRIMARY KEY,
                     timestamp TEXT NOT NULL,
@@ -82,15 +77,20 @@ class Database:
                     payload TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_timestamp
                 ON messages(timestamp)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_to_client
                 ON messages(to_client)
-            """)
+            """
+            )
             conn.commit()
         logger.info(f"Database initialized at {self.db_path}")
 
@@ -98,18 +98,21 @@ class Database:
         """Persist message to database"""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO messages
                     (id, timestamp, from_client, to_client, type, payload)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    msg_dict['id'],
-                    msg_dict['timestamp'],
-                    msg_dict['from'],
-                    msg_dict['to'],
-                    msg_dict['type'],
-                    json.dumps(msg_dict['payload'])
-                ))
+                """,
+                    (
+                        msg_dict["id"],
+                        msg_dict["timestamp"],
+                        msg_dict["from"],
+                        msg_dict["to"],
+                        msg_dict["type"],
+                        json.dumps(msg_dict["payload"]),
+                    ),
+                )
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to save message {msg_dict['id']}: {e}")
@@ -118,23 +121,28 @@ class Database:
         """Load recent messages from database"""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT id, timestamp, from_client, to_client, type, payload
                     FROM messages
                     ORDER BY timestamp DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
 
                 messages = []
                 for row in cursor:
-                    messages.append({
-                        'id': row[0],
-                        'timestamp': row[1],
-                        'from': row[2],
-                        'to': row[3],
-                        'type': row[4],
-                        'payload': json.loads(row[5])
-                    })
+                    messages.append(
+                        {
+                            "id": row[0],
+                            "timestamp": row[1],
+                            "from": row[2],
+                            "to": row[3],
+                            "type": row[4],
+                            "payload": json.loads(row[5]),
+                        }
+                    )
                 return list(reversed(messages))
         except Exception as e:
             logger.error(f"Failed to load messages: {e}")
@@ -147,17 +155,19 @@ class Database:
                 cursor = conn.execute("SELECT COUNT(*) FROM messages")
                 total = cursor.fetchone()[0]
 
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT from_client, COUNT(*)
                     FROM messages
                     GROUP BY from_client
-                """)
+                """
+                )
                 by_client = dict(cursor.fetchall())
 
-                return {'total': total, 'by_client': by_client}
+                return {"total": total, "by_client": by_client}
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
-            return {'total': 0, 'by_client': {}}
+            return {"total": 0, "by_client": {}}
 
 
 # Initialize database
@@ -186,7 +196,7 @@ class Message:
             "from": self.from_client,
             "to": self.to_client,
             "type": self.msg_type,
-            "payload": self.payload
+            "payload": self.payload,
         }
 
     def validate(self):
@@ -205,13 +215,13 @@ class Message:
 def update_metrics(from_client):
     """Update message metrics"""
     with metrics_lock:
-        metrics['total_messages'] += 1
-        if from_client not in metrics['messages_by_client']:
-            metrics['messages_by_client'][from_client] = 0
-        metrics['messages_by_client'][from_client] += 1
+        metrics["total_messages"] += 1
+        if from_client not in metrics["messages_by_client"]:
+            metrics["messages_by_client"][from_client] = 0
+        metrics["messages_by_client"][from_client] += 1
 
 
-@app.route('/api/send', methods=['POST'])
+@app.route("/api/send", methods=["POST"])
 def send_message():
     """Send a message to the bus"""
     try:
@@ -222,10 +232,10 @@ def send_message():
             return jsonify({"error": "Empty request body"}), 400
 
         msg = Message(
-            from_client=data.get('from', 'unknown'),
-            to_client=data.get('to', 'all'),
-            msg_type=data.get('type', 'broadcast'),
-            payload=data.get('payload', {})
+            from_client=data.get("from", "unknown"),
+            to_client=data.get("to", "all"),
+            msg_type=data.get("type", "broadcast"),
+            payload=data.get("payload", {}),
         )
 
         # Validate
@@ -243,30 +253,32 @@ def send_message():
         # Update metrics
         update_metrics(msg.from_client)
 
-        logger.info(f"Message {msg.id}: {msg.from_client} -> {msg.to_client} ({msg.msg_type})")
+        logger.info(
+            f"Message {msg.id}: {msg.from_client} -> {msg.to_client} ({msg.msg_type})"
+        )
 
         return jsonify({"status": "ok", "message_id": msg.id})
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         with metrics_lock:
-            metrics['errors'] += 1
+            metrics["errors"] += 1
         return jsonify({"error": str(e)}), 400
 
     except Exception as e:
         logger.error(f"Unexpected error in send_message: {e}")
         with metrics_lock:
-            metrics['errors'] += 1
+            metrics["errors"] += 1
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/api/messages', methods=['GET'])
+@app.route("/api/messages", methods=["GET"])
 def get_messages():
     """Get recent messages (polling endpoint)"""
     try:
-        since = request.args.get('since')
-        to_filter = request.args.get('to', 'all')
-        limit = int(request.args.get('limit', 100))
+        since = request.args.get("since")
+        to_filter = request.args.get("to", "all")
+        limit = int(request.args.get("limit", 100))
 
         # Cap limit
         limit = min(limit, MAX_QUEUE_SIZE)
@@ -276,11 +288,11 @@ def get_messages():
 
         # Filter by timestamp
         if since:
-            messages = [m for m in messages if m['timestamp'] > since]
+            messages = [m for m in messages if m["timestamp"] > since]
 
         # Filter by recipient
-        if to_filter != 'all':
-            messages = [m for m in messages if m['to'] in [to_filter, 'all']]
+        if to_filter != "all":
+            messages = [m for m in messages if m["to"] in [to_filter, "all"]]
 
         # Apply limit
         messages = messages[-limit:]
@@ -296,20 +308,21 @@ def get_messages():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/api/subscribe')
+@app.route("/api/subscribe")
 def subscribe():
     """Server-Sent Events endpoint for real-time updates"""
+
     def event_stream():
         last_id = None
         try:
             while True:
                 with message_lock:
-                    new_messages = [m for m in message_queue if m['id'] != last_id]
+                    new_messages = [m for m in message_queue if m["id"] != last_id]
 
                 if new_messages:
                     for msg in new_messages:
                         yield f"data: {json.dumps(msg)}\n\n"
-                        last_id = msg['id']
+                        last_id = msg["id"]
 
                 time.sleep(0.5)
         except GeneratorExit:
@@ -319,12 +332,12 @@ def subscribe():
 
     return app.response_class(
         event_stream(),
-        mimetype='text/event-stream',
-        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
-@app.route('/api/status', methods=['GET'])
+@app.route("/api/status", methods=["GET"])
 def status():
     """Health check + statistics"""
     try:
@@ -334,38 +347,46 @@ def status():
         with metrics_lock:
             current_metrics = metrics.copy()
 
-        db_stats = db.get_stats() if db else {'total': 0, 'by_client': {}}
+        db_stats = db.get_stats() if db else {"total": 0, "by_client": {}}
 
-        uptime_seconds = (datetime.utcnow() - datetime.fromisoformat(current_metrics['start_time'].replace('Z', ''))).total_seconds()
+        uptime_seconds = (
+            datetime.utcnow()
+            - datetime.fromisoformat(current_metrics["start_time"].replace("Z", ""))
+        ).total_seconds()
 
-        return jsonify({
-            "status": "running",
-            "uptime_seconds": int(uptime_seconds),
-            "queue": {
-                "current": queue_count,
-                "max": MAX_QUEUE_SIZE
-            },
-            "metrics": {
-                "total_messages": current_metrics['total_messages'],
-                "by_client": current_metrics['messages_by_client'],
-                "errors": current_metrics['errors'],
-                "messages_per_minute": round(current_metrics['total_messages'] / (uptime_seconds / 60), 2) if uptime_seconds > 0 else 0
-            },
-            "database": db_stats if db else {"enabled": False},
-            "clients": ["code", "browser", "desktop", "extension"]
-        })
+        return jsonify(
+            {
+                "status": "running",
+                "uptime_seconds": int(uptime_seconds),
+                "queue": {"current": queue_count, "max": MAX_QUEUE_SIZE},
+                "metrics": {
+                    "total_messages": current_metrics["total_messages"],
+                    "by_client": current_metrics["messages_by_client"],
+                    "errors": current_metrics["errors"],
+                    "messages_per_minute": (
+                        round(
+                            current_metrics["total_messages"] / (uptime_seconds / 60), 2
+                        )
+                        if uptime_seconds > 0
+                        else 0
+                    ),
+                },
+                "database": db_stats if db else {"enabled": False},
+                "clients": ["code", "browser", "desktop", "extension"],
+            }
+        )
 
     except Exception as e:
         logger.error(f"Error in status: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/api/clear', methods=['POST'])
+@app.route("/api/clear", methods=["POST"])
 def clear_messages():
     """Clear message queue (admin endpoint)"""
     try:
-        auth = request.headers.get('Authorization')
-        expected_auth = f'Bearer {ADMIN_TOKEN}'
+        auth = request.headers.get("Authorization")
+        expected_auth = f"Bearer {ADMIN_TOKEN}"
         if auth != expected_auth:
             logger.warning(f"Unauthorized clear attempt from {request.remote_addr}")
             return jsonify({"error": "Unauthorized"}), 401
@@ -392,10 +413,10 @@ def internal_error(e):
     return jsonify({"error": "Internal server error"}), 500
 
 
-if __name__ == '__main__':
-    logger.info("="*70)
+if __name__ == "__main__":
+    logger.info("=" * 70)
     logger.info("🚀 Multi-Claude Message Bus v2 starting")
-    logger.info("="*70)
+    logger.info("=" * 70)
     logger.info("📡 Server: http://localhost:5001")
     logger.info(f"📊 Persistence: {'Enabled' if PERSIST_ENABLED else 'Disabled'}")
     logger.info("📝 Log file: message_bus.log")
@@ -406,6 +427,6 @@ if __name__ == '__main__':
     logger.info("   GET  /api/subscribe   - SSE stream")
     logger.info("   GET  /api/status      - Health check + stats")
     logger.info("   POST /api/clear       - Clear queue (admin)")
-    logger.info("="*70)
+    logger.info("=" * 70)
 
-    app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5001, debug=False, threaded=True)

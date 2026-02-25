@@ -14,6 +14,7 @@ import random
 
 class LoadStrategy(Enum):
     """Load balancing strategies"""
+
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"
     FASTEST_RESPONSE = "fastest_response"
@@ -25,6 +26,7 @@ class LoadStrategy(Enum):
 @dataclass
 class ClientMetrics:
     """Metrics for a client"""
+
     client_id: str
     total_messages: int = 0
     pending_messages: int = 0
@@ -56,11 +58,7 @@ class LoadBalancer:
         self.round_robin_index = 0
         self.sessions: Dict[str, str] = {}  # session_id -> client_id
         self.latency_window = deque(maxlen=100)  # Rolling window
-        self.stats = {
-            'total_routed': 0,
-            'failovers': 0,
-            'strategy_changes': 0
-        }
+        self.stats = {"total_routed": 0, "failovers": 0, "strategy_changes": 0}
 
     def register_client(self, client_id: str, weight: float = 1.0):
         """
@@ -71,10 +69,7 @@ class LoadBalancer:
             weight: Weight for weighted strategies (higher = more traffic)
         """
         if client_id not in self.clients:
-            self.clients[client_id] = ClientMetrics(
-                client_id=client_id,
-                weight=weight
-            )
+            self.clients[client_id] = ClientMetrics(client_id=client_id, weight=weight)
 
     def unregister_client(self, client_id: str):
         """Unregister a client"""
@@ -93,13 +88,11 @@ class LoadBalancer:
 
     def get_healthy_clients(self) -> List[str]:
         """Get list of healthy clients"""
-        return [
-            cid for cid, metrics in self.clients.items()
-            if metrics.healthy
-        ]
+        return [cid for cid, metrics in self.clients.items() if metrics.healthy]
 
-    def select_client(self, session_id: Optional[str] = None,
-                     excluded: Optional[List[str]] = None) -> Optional[str]:
+    def select_client(
+        self, session_id: Optional[str] = None, excluded: Optional[List[str]] = None
+    ) -> Optional[str]:
         """
         Select best client for message
 
@@ -111,15 +104,12 @@ class LoadBalancer:
             Selected client ID or None
         """
         excluded = excluded or []
-        available = [
-            cid for cid in self.get_healthy_clients()
-            if cid not in excluded
-        ]
+        available = [cid for cid in self.get_healthy_clients() if cid not in excluded]
 
         if not available:
             return None
 
-        self.stats['total_routed'] += 1
+        self.stats["total_routed"] += 1
 
         # Sticky session
         if session_id and self.strategy == LoadStrategy.STICKY_SESSION:
@@ -171,17 +161,11 @@ class LoadBalancer:
 
     def _least_loaded(self, available: List[str]) -> str:
         """Select client with fewest pending messages"""
-        return min(
-            available,
-            key=lambda cid: self.clients[cid].pending_messages
-        )
+        return min(available, key=lambda cid: self.clients[cid].pending_messages)
 
     def _fastest_response(self, available: List[str]) -> str:
         """Select client with lowest average latency"""
-        return min(
-            available,
-            key=lambda cid: self.clients[cid].avg_latency_ms
-        )
+        return min(available, key=lambda cid: self.clients[cid].avg_latency_ms)
 
     def _weighted_random(self, available: List[str]) -> str:
         """Weighted random selection"""
@@ -210,8 +194,7 @@ class LoadBalancer:
             metrics.avg_latency_ms = latency_ms
         else:
             metrics.avg_latency_ms = (
-                alpha * latency_ms +
-                (1 - alpha) * metrics.avg_latency_ms
+                alpha * latency_ms + (1 - alpha) * metrics.avg_latency_ms
             )
 
     def record_success(self, client_id: str):
@@ -253,7 +236,9 @@ class LoadBalancer:
             metrics = self.clients[client_id]
             metrics.pending_messages = max(0, metrics.pending_messages - 1)
 
-    def failover(self, failed_client: str, session_id: Optional[str] = None) -> Optional[str]:
+    def failover(
+        self, failed_client: str, session_id: Optional[str] = None
+    ) -> Optional[str]:
         """
         Failover to another client
 
@@ -264,14 +249,11 @@ class LoadBalancer:
         Returns:
             Fallback client ID or None
         """
-        self.stats['failovers'] += 1
+        self.stats["failovers"] += 1
         self.mark_unhealthy(failed_client)
 
         # Select new client (excluding failed)
-        new_client = self.select_client(
-            session_id=session_id,
-            excluded=[failed_client]
-        )
+        new_client = self.select_client(session_id=session_id, excluded=[failed_client])
 
         # Update sticky session
         if session_id and new_client:
@@ -287,7 +269,7 @@ class LoadBalancer:
             strategy: New strategy
         """
         self.strategy = strategy
-        self.stats['strategy_changes'] += 1
+        self.stats["strategy_changes"] += 1
 
     def get_client_stats(self, client_id: str) -> Optional[Dict]:
         """Get statistics for specific client"""
@@ -297,27 +279,31 @@ class LoadBalancer:
         metrics = self.clients[client_id]
 
         return {
-            'client_id': metrics.client_id,
-            'total_messages': metrics.total_messages,
-            'pending_messages': metrics.pending_messages,
-            'avg_latency_ms': metrics.avg_latency_ms,
-            'last_latency_ms': metrics.last_latency_ms,
-            'success_rate': metrics.success_rate,
-            'failures': metrics.failures,
-            'weight': metrics.weight,
-            'healthy': metrics.healthy,
-            'last_used': metrics.last_used.isoformat()
+            "client_id": metrics.client_id,
+            "total_messages": metrics.total_messages,
+            "pending_messages": metrics.pending_messages,
+            "avg_latency_ms": metrics.avg_latency_ms,
+            "last_latency_ms": metrics.last_latency_ms,
+            "success_rate": metrics.success_rate,
+            "failures": metrics.failures,
+            "weight": metrics.weight,
+            "healthy": metrics.healthy,
+            "last_used": metrics.last_used.isoformat(),
         }
 
     def get_stats(self) -> Dict:
         """Get load balancer statistics"""
         return {
             **self.stats,
-            'strategy': self.strategy.value,
-            'registered_clients': len(self.clients),
-            'healthy_clients': len(self.get_healthy_clients()),
-            'total_pending': sum(c.pending_messages for c in self.clients.values()),
-            'avg_success_rate': sum(c.success_rate for c in self.clients.values()) / len(self.clients) if self.clients else 0
+            "strategy": self.strategy.value,
+            "registered_clients": len(self.clients),
+            "healthy_clients": len(self.get_healthy_clients()),
+            "total_pending": sum(c.pending_messages for c in self.clients.values()),
+            "avg_success_rate": (
+                sum(c.success_rate for c in self.clients.values()) / len(self.clients)
+                if self.clients
+                else 0
+            ),
         }
 
     def get_distribution(self) -> Dict:
@@ -332,19 +318,19 @@ class LoadBalancer:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("⚖️  Load Balancer Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create load balancer
     lb = LoadBalancer(strategy=LoadStrategy.LEAST_LOADED)
 
     # Register clients
     print("\n1️⃣ Registering clients...")
-    lb.register_client('browser-1', weight=1.0)
-    lb.register_client('browser-2', weight=1.5)
-    lb.register_client('browser-3', weight=0.8)
+    lb.register_client("browser-1", weight=1.0)
+    lb.register_client("browser-2", weight=1.5)
+    lb.register_client("browser-3", weight=0.8)
 
     # Simulate traffic
     print("\n2️⃣ Simulating traffic...")
@@ -354,6 +340,7 @@ if __name__ == '__main__':
 
         # Simulate varying latencies
         import random
+
         latency = random.uniform(10, 100)
         lb.record_latency(client, latency)
 
@@ -387,7 +374,7 @@ if __name__ == '__main__':
 
     # Test failover
     print("\n6️⃣ Testing failover...")
-    failed = 'browser-1'
+    failed = "browser-1"
     fallback = lb.failover(failed)
     print(f"   {failed} failed → fallback to {fallback}")
 

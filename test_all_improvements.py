@@ -17,7 +17,7 @@ from collaboration_enhanced import (
     EnhancedCollaborationHub,
     MemberRole,
     VoteType,
-    CodeLanguage
+    CodeLanguage,
 )
 from kanban_board import KanbanBoardManager, TaskPriority, TaskStatus
 
@@ -41,9 +41,7 @@ def test_enhanced_voting():
     # Test 1: Simple majority
     print("\n📊 Simple Majority Vote...")
     dec1 = room.propose_decision(
-        "claude-code",
-        "Use Python for backend",
-        VoteType.SIMPLE_MAJORITY
+        "claude-code", "Use Python for backend", VoteType.SIMPLE_MAJORITY
     )
     room.vote(dec1, "claude-browser", approve=True)
     room.vote(dec1, "claude-desktop-1", approve=True)
@@ -59,9 +57,7 @@ def test_enhanced_voting():
     # Test 2: Consensus (needs all)
     print("\n🤝 Consensus Vote (100% required)...")
     dec2 = room.propose_decision(
-        "claude-code",
-        "Use TypeScript for frontend",
-        VoteType.CONSENSUS
+        "claude-code", "Use TypeScript for frontend", VoteType.CONSENSUS
     )
     room.vote(dec2, "claude-browser", approve=True)
     room.vote(dec2, "claude-desktop-1", approve=True)
@@ -76,9 +72,7 @@ def test_enhanced_voting():
     # Test 3: Veto power
     print("\n🚫 Veto Test...")
     dec3 = room.propose_decision(
-        "claude-code",
-        "Delete all tests",
-        VoteType.SIMPLE_MAJORITY
+        "claude-code", "Delete all tests", VoteType.SIMPLE_MAJORITY
     )
     room.vote(dec3, "claude-browser", approve=True)
     room.vote(dec3, "claude-desktop-1", veto=True)  # VETO!
@@ -118,27 +112,23 @@ def test_channels_and_files():
     # Send messages to different channels
     print("\n💬 Sending messages to channels...")
     room.send_message("claude-code", "General announcement!", channel="main")
-    room.send_message("claude-desktop-1", "Let's discuss the API design", channel=code_ch)
-    room.send_message("claude-desktop-2", "Found a bug in the login flow", channel=bugs_ch)
+    room.send_message(
+        "claude-desktop-1", "Let's discuss the API design", channel=code_ch
+    )
+    room.send_message(
+        "claude-desktop-2", "Found a bug in the login flow", channel=bugs_ch
+    )
 
     # File sharing
     print("\n📎 Sharing files...")
     code_content = b"def hello():\n    print('Hello from collab!')\n"
     file1 = room.upload_file(
-        "claude-desktop-1",
-        "hello.py",
-        code_content,
-        "text/x-python",
-        channel=code_ch
+        "claude-desktop-1", "hello.py", code_content, "text/x-python", channel=code_ch
     )
 
     readme_content = b"# Project README\n\nBuilt by multiple Claudes!\n"
     file2 = room.upload_file(
-        "claude-code",
-        "README.md",
-        readme_content,
-        "text/markdown",
-        channel=docs_ch
+        "claude-code", "README.md", readme_content, "text/markdown", channel=docs_ch
     )
 
     print(f"   Uploaded: {file1} (hello.py, {len(code_content)} bytes)")
@@ -193,7 +183,9 @@ def test_code_execution():
     print("\n🟨 Testing JavaScript...")
     js_code = "console.log('Hello from JavaScript!');\nconsole.log(2 + 2);"
     try:
-        result3 = room.execute_code("claude-desktop-1", js_code, CodeLanguage.JAVASCRIPT)
+        result3 = room.execute_code(
+            "claude-desktop-1", js_code, CodeLanguage.JAVASCRIPT
+        )
         print(f"   Output: {result3.output}")
     except Exception as e:
         print("   Skipped (Node.js not available)")
@@ -224,7 +216,7 @@ def test_kanban_integration():
         created_by="claude-code",
         priority=TaskPriority.HIGH,
         assignee="claude-desktop-1",
-        estimated_minutes=15
+        estimated_minutes=15,
     )
 
     task2 = board.create_task(
@@ -233,7 +225,7 @@ def test_kanban_integration():
         created_by="claude-code",
         priority=TaskPriority.HIGH,
         assignee="claude-desktop-1",
-        estimated_minutes=120
+        estimated_minutes=120,
     )
 
     task3 = board.create_task(
@@ -242,7 +234,7 @@ def test_kanban_integration():
         created_by="claude-code",
         priority=TaskPriority.MEDIUM,
         assignee="claude-desktop-2",
-        estimated_minutes=60
+        estimated_minutes=60,
     )
 
     # Add dependencies
@@ -307,15 +299,15 @@ def test_full_workflow():
 
     # Share initial files
     print("\n📎 Sharing initial files...")
-    spec = b"Trading Bot Spec\n- Momentum strategy\n- Crypto markets\n- Paper trading mode"
+    spec = (
+        b"Trading Bot Spec\n- Momentum strategy\n- Crypto markets\n- Paper trading mode"
+    )
     room.upload_file("claude-code", "spec.txt", spec, channel="main")
 
     # Propose architecture decision
     print("\n🎯 Architecture decision...")
     dec_id = room.propose_decision(
-        "claude-code",
-        "Architecture: Python + FastAPI + Alpaca API",
-        VoteType.CONSENSUS
+        "claude-code", "Architecture: Python + FastAPI + Alpaca API", VoteType.CONSENSUS
     )
 
     # Everyone votes
@@ -348,7 +340,9 @@ rsi = calculate_rsi(prices)
 print(f"RSI: {rsi:.2f}")
 print("✅ Momentum indicator working!")
 """
-    result = room.execute_code("claude-desktop-1", code, CodeLanguage.PYTHON, channel=code_ch)
+    result = room.execute_code(
+        "claude-desktop-1", code, CodeLanguage.PYTHON, channel=code_ch
+    )
     print(f"   Execution time: {result.execution_time_ms:.1f}ms")
     print(f"   Output preview: {result.output[:50]}...")
 
@@ -360,7 +354,9 @@ print("✅ Momentum indicator working!")
     print(f"   Members: {summary['active_members']}")
     print(f"   Channels: {summary['channels']}")
     print(f"   Messages: {summary['total_messages']}")
-    print(f"   Decisions: {summary['approved_decisions']}/{summary['total_decisions']} approved")
+    print(
+        f"   Decisions: {summary['approved_decisions']}/{summary['total_decisions']} approved"
+    )
     print(f"   Files: {summary['files_shared']}")
     print(f"   Code executions: {summary['code_executions']}")
 
@@ -411,5 +407,5 @@ def main():
     print("\n🚀 Vision achieved: Multiple Claudes collaborating effortlessly!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

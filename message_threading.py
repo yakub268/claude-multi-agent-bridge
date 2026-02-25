@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ThreadNode:
     """Single message in a thread"""
+
     message_id: str
     from_client: str
     text: str
@@ -38,6 +39,7 @@ class ThreadNode:
 @dataclass
 class Thread:
     """Complete conversation thread"""
+
     thread_id: str
     root_message_id: str
     messages: Dict[str, ThreadNode]  # message_id -> ThreadNode
@@ -64,12 +66,14 @@ class MessageThreading:
         self.threads: Dict[str, Thread] = {}  # thread_id -> Thread
         self.message_to_thread: Dict[str, str] = {}  # message_id -> thread_id
 
-    def add_message(self,
-                   message_id: str,
-                   from_client: str,
-                   text: str,
-                   timestamp: str,
-                   reply_to: Optional[str] = None):
+    def add_message(
+        self,
+        message_id: str,
+        from_client: str,
+        text: str,
+        timestamp: str,
+        reply_to: Optional[str] = None,
+    ):
         """
         Add message to threading system
 
@@ -88,7 +92,7 @@ class MessageThreading:
             from_client=from_client,
             text=text,
             timestamp=timestamp,
-            reply_to=reply_to
+            reply_to=reply_to,
         )
 
         if reply_to:
@@ -118,7 +122,9 @@ class MessageThreading:
                 return thread_id
             else:
                 # Parent not found, create new thread
-                logger.warning(f"Reply parent {reply_to} not found, creating new thread")
+                logger.warning(
+                    f"Reply parent {reply_to} not found, creating new thread"
+                )
                 return self._create_new_thread(node)
         else:
             # No reply_to - this starts a new thread
@@ -136,7 +142,7 @@ class MessageThreading:
             message_count=1,
             participants={root_node.from_client},
             created_at=root_node.timestamp,
-            last_updated=root_node.timestamp
+            last_updated=root_node.timestamp,
         )
 
         self.threads[thread_id] = thread
@@ -147,6 +153,7 @@ class MessageThreading:
 
     def _calculate_depth(self, thread: Thread) -> int:
         """Calculate max depth of thread"""
+
         def get_depth(message_id: str, current_depth: int = 1) -> int:
             node = thread.messages.get(message_id)
             if not node or not node.replies:
@@ -239,7 +246,9 @@ class MessageThreading:
 
         lines = []
         lines.append(f"Thread: {thread_id}")
-        lines.append(f"Messages: {thread.message_count} | Depth: {thread.depth} | Participants: {len(thread.participants)}")
+        lines.append(
+            f"Messages: {thread.message_count} | Depth: {thread.depth} | Participants: {len(thread.participants)}"
+        )
         lines.append("")
 
         def render_node(message_id: str, prefix: str = "", is_last: bool = True):
@@ -248,7 +257,7 @@ class MessageThreading:
             # Truncate text
             text = node.text
             if len(text) > max_text_length:
-                text = text[:max_text_length - 3] + "..."
+                text = text[: max_text_length - 3] + "..."
 
             # Format line
             connector = "└── " if is_last else "├── "
@@ -259,7 +268,7 @@ class MessageThreading:
             if node.replies:
                 new_prefix = prefix + ("    " if is_last else "│   ")
                 for i, reply_id in enumerate(node.replies):
-                    is_last_child = (i == len(node.replies) - 1)
+                    is_last_child = i == len(node.replies) - 1
                     render_node(reply_id, new_prefix, is_last_child)
 
         # Start from root
@@ -287,19 +296,23 @@ class MessageThreading:
         avg_depth = sum(depths) / len(depths) if depths else 0
 
         # Find most active participant
-        most_active = max(participant_counts.items(), key=lambda x: x[1]) if participant_counts else (None, 0)
+        most_active = (
+            max(participant_counts.items(), key=lambda x: x[1])
+            if participant_counts
+            else (None, 0)
+        )
 
         return {
-            'thread_id': thread_id,
-            'message_count': thread.message_count,
-            'max_depth': thread.depth,
-            'avg_depth': round(avg_depth, 2),
-            'participants': len(thread.participants),
-            'participant_breakdown': dict(participant_counts),
-            'most_active': most_active[0],
-            'most_active_count': most_active[1],
-            'created_at': thread.created_at,
-            'last_updated': thread.last_updated
+            "thread_id": thread_id,
+            "message_count": thread.message_count,
+            "max_depth": thread.depth,
+            "avg_depth": round(avg_depth, 2),
+            "participants": len(thread.participants),
+            "participant_breakdown": dict(participant_counts),
+            "most_active": most_active[0],
+            "most_active_count": most_active[1],
+            "created_at": thread.created_at,
+            "last_updated": thread.last_updated,
         }
 
     def export_thread(self, thread_id: str, filepath: str, format: str = "json"):
@@ -319,17 +332,17 @@ class MessageThreading:
         if format == "json":
             # Export as JSON
             thread_data = {
-                'thread_id': thread.thread_id,
-                'root_message_id': thread.root_message_id,
-                'depth': thread.depth,
-                'message_count': thread.message_count,
-                'participants': list(thread.participants),
-                'created_at': thread.created_at,
-                'last_updated': thread.last_updated,
-                'messages': [asdict(node) for node in thread.messages.values()]
+                "thread_id": thread.thread_id,
+                "root_message_id": thread.root_message_id,
+                "depth": thread.depth,
+                "message_count": thread.message_count,
+                "participants": list(thread.participants),
+                "created_at": thread.created_at,
+                "last_updated": thread.last_updated,
+                "messages": [asdict(node) for node in thread.messages.values()],
             }
 
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 json.dump(thread_data, f, indent=2)
 
         else:  # text format
@@ -356,7 +369,7 @@ class MessageThreading:
 
             write_node(thread.root_message_id)
 
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 f.write("\n".join(lines))
 
         logger.info(f"Thread {thread_id} exported to {filepath}")
@@ -365,19 +378,19 @@ class MessageThreading:
         """List all threads with basic info"""
         return [
             {
-                'thread_id': t.thread_id,
-                'message_count': t.message_count,
-                'depth': t.depth,
-                'participants': len(t.participants),
-                'created_at': t.created_at,
-                'last_updated': t.last_updated
+                "thread_id": t.thread_id,
+                "message_count": t.message_count,
+                "depth": t.depth,
+                "participants": len(t.participants),
+                "created_at": t.created_at,
+                "last_updated": t.last_updated,
             }
             for t in self.threads.values()
         ]
 
 
 # Example usage
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("🧵 Message Threading System - Test")
     print("=" * 80)
@@ -388,22 +401,69 @@ if __name__ == '__main__':
     print("\n📝 Building conversation thread...\n")
 
     # Root message
-    threading.add_message("msg-1", "claude-code", "Should we use FastAPI or Flask?", "2026-02-22T10:00:00Z")
+    threading.add_message(
+        "msg-1",
+        "claude-code",
+        "Should we use FastAPI or Flask?",
+        "2026-02-22T10:00:00Z",
+    )
 
     # First level replies
-    threading.add_message("msg-2", "claude-desktop-1", "I vote for FastAPI - better async support", "2026-02-22T10:01:00Z", reply_to="msg-1")
-    threading.add_message("msg-3", "claude-desktop-2", "FastAPI +1, also has automatic API docs", "2026-02-22T10:02:00Z", reply_to="msg-1")
+    threading.add_message(
+        "msg-2",
+        "claude-desktop-1",
+        "I vote for FastAPI - better async support",
+        "2026-02-22T10:01:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-3",
+        "claude-desktop-2",
+        "FastAPI +1, also has automatic API docs",
+        "2026-02-22T10:02:00Z",
+        reply_to="msg-1",
+    )
 
     # Second level replies
-    threading.add_message("msg-4", "claude-code", "Great points! FastAPI it is.", "2026-02-22T10:03:00Z", reply_to="msg-2")
-    threading.add_message("msg-5", "claude-desktop-1", "Should we use SQLAlchemy or raw SQL?", "2026-02-22T10:04:00Z", reply_to="msg-4")
+    threading.add_message(
+        "msg-4",
+        "claude-code",
+        "Great points! FastAPI it is.",
+        "2026-02-22T10:03:00Z",
+        reply_to="msg-2",
+    )
+    threading.add_message(
+        "msg-5",
+        "claude-desktop-1",
+        "Should we use SQLAlchemy or raw SQL?",
+        "2026-02-22T10:04:00Z",
+        reply_to="msg-4",
+    )
 
     # Third level reply
-    threading.add_message("msg-6", "claude-desktop-2", "SQLAlchemy for sure - easier migrations", "2026-02-22T10:05:00Z", reply_to="msg-5")
+    threading.add_message(
+        "msg-6",
+        "claude-desktop-2",
+        "SQLAlchemy for sure - easier migrations",
+        "2026-02-22T10:05:00Z",
+        reply_to="msg-5",
+    )
 
     # Another first level reply (creates branch)
-    threading.add_message("msg-7", "claude-desktop-3", "What about Pydantic for data validation?", "2026-02-22T10:06:00Z", reply_to="msg-1")
-    threading.add_message("msg-8", "claude-code", "Yes! FastAPI uses Pydantic natively", "2026-02-22T10:07:00Z", reply_to="msg-7")
+    threading.add_message(
+        "msg-7",
+        "claude-desktop-3",
+        "What about Pydantic for data validation?",
+        "2026-02-22T10:06:00Z",
+        reply_to="msg-1",
+    )
+    threading.add_message(
+        "msg-8",
+        "claude-code",
+        "Yes! FastAPI uses Pydantic natively",
+        "2026-02-22T10:07:00Z",
+        reply_to="msg-7",
+    )
 
     # Visualize thread
     thread = threading.get_thread("msg-1")
@@ -431,6 +491,8 @@ if __name__ == '__main__':
     # List all threads
     print("\n📋 All Threads:")
     for thread_info in threading.list_all_threads():
-        print(f"   {thread_info['thread_id']}: {thread_info['message_count']} messages, depth {thread_info['depth']}")
+        print(
+            f"   {thread_info['thread_id']}: {thread_info['message_count']} messages, depth {thread_info['depth']}"
+        )
 
     print("\n✅ Message Threading test complete!")

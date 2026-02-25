@@ -20,7 +20,9 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, Dict, List
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -40,9 +42,11 @@ class ClipboardDesktopClient:
     9. User pastes into Claude Desktop
     """
 
-    def __init__(self,
-                 client_id: str = "claude-desktop-1",
-                 message_bus_url: str = "http://localhost:5001"):
+    def __init__(
+        self,
+        client_id: str = "claude-desktop-1",
+        message_bus_url: str = "http://localhost:5001",
+    ):
         self.client_id = client_id
         self.bus_url = message_bus_url
         self.last_clipboard = ""
@@ -79,9 +83,9 @@ class ClipboardDesktopClient:
                     "to": "all",
                     "text": text,
                     "type": msg_type,
-                    "priority": 1
+                    "priority": 1,
                 },
-                timeout=5
+                timeout=5,
             )
 
             if response.status_code == 200:
@@ -102,13 +106,13 @@ class ClipboardDesktopClient:
                 f"{self.bus_url}/messages",
                 params={
                     "to": self.client_id,
-                    "since": int(self.last_check_time * 1000)
+                    "since": int(self.last_check_time * 1000),
                 },
-                timeout=5
+                timeout=5,
             )
 
             if response.status_code == 200:
-                messages = response.json().get('messages', [])
+                messages = response.json().get("messages", [])
                 if messages:
                     self.last_check_time = time.time()
                     return messages
@@ -153,7 +157,9 @@ class ClipboardDesktopClient:
                 if current_clipboard and current_clipboard != self.last_clipboard:
                     # Filter out very short clips (likely not responses)
                     if len(current_clipboard) > 20:
-                        logger.info(f"📋 Clipboard changed ({len(current_clipboard)} chars)")
+                        logger.info(
+                            f"📋 Clipboard changed ({len(current_clipboard)} chars)"
+                        )
 
                         # Send to bridge
                         self.send_to_bridge(current_clipboard)
@@ -166,8 +172,8 @@ class ClipboardDesktopClient:
                     logger.info(f"📨 Received {len(new_messages)} new message(s)")
 
                     for msg in new_messages:
-                        from_client = msg.get('from', 'unknown')
-                        text = msg.get('text', '')
+                        from_client = msg.get("from", "unknown")
+                        text = msg.get("text", "")
 
                         logger.info(f"  [{from_client}]: {text[:80]}...")
 
@@ -205,10 +211,12 @@ class DesktopCollaborationClient:
     multi-Claude coordination via Claude Desktop
     """
 
-    def __init__(self,
-                 client_id: str = "claude-desktop-1",
-                 message_bus_url: str = "http://localhost:5001",
-                 room_id: Optional[str] = None):
+    def __init__(
+        self,
+        client_id: str = "claude-desktop-1",
+        message_bus_url: str = "http://localhost:5001",
+        room_id: Optional[str] = None,
+    ):
         self.client_id = client_id
         self.bus_url = message_bus_url
         self.room_id = room_id
@@ -223,11 +231,8 @@ class DesktopCollaborationClient:
         try:
             response = requests.post(
                 f"{self.bus_url}/collab/room/{room_id}/join",
-                json={
-                    "client_id": self.client_id,
-                    "role": role
-                },
-                timeout=5
+                json={"client_id": self.client_id, "role": role},
+                timeout=5,
             )
 
             if response.status_code == 200:
@@ -251,12 +256,8 @@ class DesktopCollaborationClient:
         try:
             response = requests.post(
                 f"{self.bus_url}/collab/room/{self.room_id}/message",
-                json={
-                    "from_client": self.client_id,
-                    "text": text,
-                    "channel": channel
-                },
-                timeout=5
+                json={"from_client": self.client_id, "text": text, "channel": channel},
+                timeout=5,
             )
 
             if response.status_code == 200:
@@ -279,25 +280,29 @@ class DesktopCollaborationClient:
 
 
 # CLI interface
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Desktop Claude clipboard integration")
-    parser.add_argument('--client-id', default='claude-desktop-1', help='Client ID')
-    parser.add_argument('--url', default='http://localhost:5001', help='Message bus URL')
-    parser.add_argument('--room', help='Collaboration room ID to join')
-    parser.add_argument('--role', default='member', help='Room role (member, coder, reviewer, etc.)')
-    parser.add_argument('--interval', type=float, default=2.0, help='Clipboard check interval (seconds)')
-    parser.add_argument('--send', help='Send a single message and exit')
+    parser.add_argument("--client-id", default="claude-desktop-1", help="Client ID")
+    parser.add_argument(
+        "--url", default="http://localhost:5001", help="Message bus URL"
+    )
+    parser.add_argument("--room", help="Collaboration room ID to join")
+    parser.add_argument(
+        "--role", default="member", help="Room role (member, coder, reviewer, etc.)"
+    )
+    parser.add_argument(
+        "--interval", type=float, default=2.0, help="Clipboard check interval (seconds)"
+    )
+    parser.add_argument("--send", help="Send a single message and exit")
 
     args = parser.parse_args()
 
     if args.room:
         # Collaboration mode
         client = DesktopCollaborationClient(
-            client_id=args.client_id,
-            message_bus_url=args.url,
-            room_id=args.room
+            client_id=args.client_id, message_bus_url=args.url, room_id=args.room
         )
 
         # Join room
@@ -308,8 +313,7 @@ if __name__ == '__main__':
     else:
         # Simple clipboard mode
         client = ClipboardDesktopClient(
-            client_id=args.client_id,
-            message_bus_url=args.url
+            client_id=args.client_id, message_bus_url=args.url
         )
 
         if args.send:

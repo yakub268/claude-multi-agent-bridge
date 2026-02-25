@@ -14,6 +14,7 @@ import uuid
 
 class MessageStatus(Enum):
     """Message delivery status"""
+
     PENDING = "pending"
     SENT = "sent"
     DELIVERED = "delivered"
@@ -40,6 +41,7 @@ class AckMessage:
         retries: Number of retry attempts
         timeout: Timeout in seconds
     """
+
     id: str
     from_client: str
     to_client: str
@@ -79,24 +81,29 @@ class AckManager:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.callbacks = {
-            'on_delivered': [],
-            'on_acked': [],
-            'on_failed': [],
-            'on_timeout': []
+            "on_delivered": [],
+            "on_acked": [],
+            "on_failed": [],
+            "on_timeout": [],
         }
         self.stats = {
-            'total_sent': 0,
-            'total_delivered': 0,
-            'total_acked': 0,
-            'total_failed': 0,
-            'total_timeout': 0
+            "total_sent": 0,
+            "total_delivered": 0,
+            "total_acked": 0,
+            "total_failed": 0,
+            "total_timeout": 0,
         }
         self._running = False
         self._retry_thread = None
 
-    def send_message(self, from_client: str, to_client: str,
-                    msg_type: str, payload: Dict,
-                    timeout: int = 30) -> str:
+    def send_message(
+        self,
+        from_client: str,
+        to_client: str,
+        msg_type: str,
+        payload: Dict,
+        timeout: int = 30,
+    ) -> str:
         """
         Send message with acknowledgment tracking
 
@@ -119,14 +126,14 @@ class AckManager:
             type=msg_type,
             payload=payload,
             timeout=timeout,
-            sent_at=datetime.now(timezone.utc)
+            sent_at=datetime.now(timezone.utc),
         )
 
         message.status = MessageStatus.SENT
 
         self.messages[msg_id] = message
         self.pending_acks.add(msg_id)
-        self.stats['total_sent'] += 1
+        self.stats["total_sent"] += 1
 
         return msg_id
 
@@ -147,10 +154,10 @@ class AckManager:
         message.status = MessageStatus.DELIVERED
         message.delivered_at = datetime.now(timezone.utc)
 
-        self.stats['total_delivered'] += 1
+        self.stats["total_delivered"] += 1
 
         # Trigger callbacks
-        self._trigger_callbacks('on_delivered', message)
+        self._trigger_callbacks("on_delivered", message)
 
         return True
 
@@ -174,10 +181,10 @@ class AckManager:
         # Remove from pending
         self.pending_acks.discard(msg_id)
 
-        self.stats['total_acked'] += 1
+        self.stats["total_acked"] += 1
 
         # Trigger callbacks
-        self._trigger_callbacks('on_acked', message)
+        self._trigger_callbacks("on_acked", message)
 
         return True
 
@@ -200,10 +207,10 @@ class AckManager:
         # Remove from pending
         self.pending_acks.discard(msg_id)
 
-        self.stats['total_failed'] += 1
+        self.stats["total_failed"] += 1
 
         # Trigger callbacks
-        self._trigger_callbacks('on_failed', message)
+        self._trigger_callbacks("on_failed", message)
 
         return True
 
@@ -214,7 +221,8 @@ class AckManager:
     def get_pending_messages(self) -> list:
         """Get all pending messages"""
         return [
-            msg for msg in self.messages.values()
+            msg
+            for msg in self.messages.values()
             if msg.status in [MessageStatus.SENT, MessageStatus.DELIVERED]
         ]
 
@@ -278,10 +286,10 @@ class AckManager:
                     # Timeout
                     message.status = MessageStatus.TIMEOUT
                     self.pending_acks.discard(msg_id)
-                    self.stats['total_timeout'] += 1
+                    self.stats["total_timeout"] += 1
 
                     # Trigger callbacks
-                    self._trigger_callbacks('on_timeout', message)
+                    self._trigger_callbacks("on_timeout", message)
 
     def _retry_pending(self):
         """Retry pending messages"""
@@ -295,7 +303,9 @@ class AckManager:
                 if message.retries < self.max_retries:
                     # Retry
                     message.retries += 1
-                    print(f"🔄 Retrying message {msg_id} (attempt {message.retries}/{self.max_retries})")
+                    print(
+                        f"🔄 Retrying message {msg_id} (attempt {message.retries}/{self.max_retries})"
+                    )
 
                     # Mark for resend (implementation would trigger actual send)
                     # For now, just track the retry
@@ -308,14 +318,14 @@ class AckManager:
         """Get acknowledgment statistics"""
         pending_count = len(self.pending_acks)
         ack_rate = 0
-        if self.stats['total_sent'] > 0:
-            ack_rate = self.stats['total_acked'] / self.stats['total_sent']
+        if self.stats["total_sent"] > 0:
+            ack_rate = self.stats["total_acked"] / self.stats["total_sent"]
 
         return {
             **self.stats,
-            'pending': pending_count,
-            'ack_rate': ack_rate,
-            'active_messages': len(self.messages)
+            "pending": pending_count,
+            "ack_rate": ack_rate,
+            "active_messages": len(self.messages),
         }
 
     def cleanup_old(self, max_age_seconds: int = 3600):
@@ -332,7 +342,11 @@ class AckManager:
 
         for msg_id, message in self.messages.items():
             # Only clean up completed messages
-            if message.status in [MessageStatus.ACKNOWLEDGED, MessageStatus.FAILED, MessageStatus.TIMEOUT]:
+            if message.status in [
+                MessageStatus.ACKNOWLEDGED,
+                MessageStatus.FAILED,
+                MessageStatus.TIMEOUT,
+            ]:
                 if message.created_at.timestamp() < cutoff:
                     to_remove.append(msg_id)
 
@@ -346,10 +360,10 @@ class AckManager:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("✅ Message Acknowledgment System Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create manager
     ack_mgr = AckManager(max_retries=3, retry_delay=2)
@@ -367,15 +381,15 @@ if __name__ == '__main__':
     def on_timeout(msg):
         print(f"   ⏰ Timeout: {msg.id}")
 
-    ack_mgr.register_callback('on_delivered', on_delivered)
-    ack_mgr.register_callback('on_acked', on_acked)
-    ack_mgr.register_callback('on_failed', on_failed)
-    ack_mgr.register_callback('on_timeout', on_timeout)
+    ack_mgr.register_callback("on_delivered", on_delivered)
+    ack_mgr.register_callback("on_acked", on_acked)
+    ack_mgr.register_callback("on_failed", on_failed)
+    ack_mgr.register_callback("on_timeout", on_timeout)
 
     # Send messages
     print("\n1️⃣ Sending messages...")
-    msg1 = ack_mgr.send_message('code', 'browser', 'command', {'text': 'Hello'})
-    msg2 = ack_mgr.send_message('code', 'desktop', 'command', {'text': 'World'})
+    msg1 = ack_mgr.send_message("code", "browser", "command", {"text": "Hello"})
+    msg2 = ack_mgr.send_message("code", "desktop", "command", {"text": "World"})
 
     print(f"   Sent: {msg1[:8]}...")
     print(f"   Sent: {msg2[:8]}...")

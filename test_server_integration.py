@@ -93,8 +93,7 @@ def test_integration():
     print("\n6️⃣ Executing code...")
     try:
         result = desktop1.execute_code(
-            "print('Hello from integration test!')\nprint(2 + 2)",
-            language="python"
+            "print('Hello from integration test!')\nprint(2 + 2)", language="python"
         )
         print(f"   ✅ Code executed in {result['execution_time_ms']:.1f}ms")
         print(f"   Output: {result['output'][:50]}...")
@@ -106,8 +105,7 @@ def test_integration():
     print("\n7️⃣ Proposing decision...")
     try:
         dec_id = code.propose_decision(
-            "Integration test successful",
-            vote_type="simple_majority"
+            "Integration test successful", vote_type="simple_majority"
         )
         print(f"   ✅ Decision proposed: {dec_id}")
     except Exception as e:
@@ -132,7 +130,9 @@ def test_integration():
         print(f"      Members: {summary['active_members']}")
         print(f"      Channels: {summary['channels']}")
         print(f"      Messages: {summary['total_messages']}")
-        print(f"      Decisions: {summary['approved_decisions']}/{summary['total_decisions']}")
+        print(
+            f"      Decisions: {summary['approved_decisions']}/{summary['total_decisions']}"
+        )
         print(f"      Code executions: {summary['code_executions']}")
     except Exception as e:
         print(f"   ❌ Failed: {e}")
@@ -159,5 +159,5 @@ def test_integration():
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_integration()

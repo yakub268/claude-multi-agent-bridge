@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(Enum):
     """Component health status"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     CRITICAL = "critical"
@@ -27,6 +28,7 @@ class HealthStatus(Enum):
 @dataclass
 class Component:
     """System component"""
+
     name: str
     check_func: Callable[[], bool]
     recovery_func: Optional[Callable[[], bool]] = None
@@ -55,16 +57,12 @@ class AutoRecovery:
         self.components: Dict[str, Component] = {}
         self.check_interval = check_interval
         self.running = False
-        self.callbacks = {
-            'on_failure': [],
-            'on_recovery': [],
-            'on_degraded': []
-        }
+        self.callbacks = {"on_failure": [], "on_recovery": [], "on_degraded": []}
         self.stats = {
-            'total_failures': 0,
-            'total_recoveries': 0,
-            'auto_recoveries': 0,
-            'failed_recoveries': 0
+            "total_failures": 0,
+            "total_recoveries": 0,
+            "auto_recoveries": 0,
+            "failed_recoveries": 0,
         }
         self._monitor_thread = None
 
@@ -138,10 +136,10 @@ class AutoRecovery:
             component.health = HealthStatus.HEALTHY
             component.failure_count = 0
             component.recovery_attempts = 0
-            self.stats['total_recoveries'] += 1
+            self.stats["total_recoveries"] += 1
 
             # Trigger callbacks
-            for callback in self.callbacks['on_recovery']:
+            for callback in self.callbacks["on_recovery"]:
                 try:
                     callback(component.name)
                 except Exception as e:
@@ -155,10 +153,10 @@ class AutoRecovery:
             # First failure
             logger.warning(f"⚠️  Component degraded: {component.name}")
             component.health = HealthStatus.DEGRADED
-            self.stats['total_failures'] += 1
+            self.stats["total_failures"] += 1
 
             # Trigger callbacks
-            for callback in self.callbacks['on_degraded']:
+            for callback in self.callbacks["on_degraded"]:
                 try:
                     callback(component.name)
                 except Exception as e:
@@ -188,10 +186,10 @@ class AutoRecovery:
         if component.recovery_attempts >= component.max_recovery_attempts:
             logger.error(f"❌ Max recovery attempts exceeded: {component.name}")
             component.health = HealthStatus.FAILED
-            self.stats['failed_recoveries'] += 1
+            self.stats["failed_recoveries"] += 1
 
             # Trigger failure callbacks
-            for callback in self.callbacks['on_failure']:
+            for callback in self.callbacks["on_failure"]:
                 try:
                     callback(component.name)
                 except Exception as e:
@@ -199,7 +197,9 @@ class AutoRecovery:
             return
 
         component.recovery_attempts += 1
-        logger.info(f"🔄 Attempting recovery for {component.name} (attempt {component.recovery_attempts}/{component.max_recovery_attempts})")
+        logger.info(
+            f"🔄 Attempting recovery for {component.name} (attempt {component.recovery_attempts}/{component.max_recovery_attempts})"
+        )
 
         component.health = HealthStatus.RECOVERING
 
@@ -211,10 +211,10 @@ class AutoRecovery:
                 component.health = HealthStatus.HEALTHY
                 component.failure_count = 0
                 component.recovery_attempts = 0
-                self.stats['auto_recoveries'] += 1
+                self.stats["auto_recoveries"] += 1
 
                 # Trigger callbacks
-                for callback in self.callbacks['on_recovery']:
+                for callback in self.callbacks["on_recovery"]:
                     try:
                         callback(component.name)
                     except Exception as e:
@@ -234,7 +234,7 @@ class AutoRecovery:
             HealthStatus.DEGRADED: [],
             HealthStatus.CRITICAL: [],
             HealthStatus.RECOVERING: [],
-            HealthStatus.FAILED: []
+            HealthStatus.FAILED: [],
         }
 
         for name, component in self.components.items():
@@ -253,27 +253,27 @@ class AutoRecovery:
             overall = HealthStatus.HEALTHY
 
         return {
-            'overall': overall.value,
-            'healthy': len(components_by_status[HealthStatus.HEALTHY]),
-            'degraded': len(components_by_status[HealthStatus.DEGRADED]),
-            'critical': len(components_by_status[HealthStatus.CRITICAL]),
-            'recovering': len(components_by_status[HealthStatus.RECOVERING]),
-            'failed': len(components_by_status[HealthStatus.FAILED]),
-            'components': {
-                status.value: names
-                for status, names in components_by_status.items()
-            }
+            "overall": overall.value,
+            "healthy": len(components_by_status[HealthStatus.HEALTHY]),
+            "degraded": len(components_by_status[HealthStatus.DEGRADED]),
+            "critical": len(components_by_status[HealthStatus.CRITICAL]),
+            "recovering": len(components_by_status[HealthStatus.RECOVERING]),
+            "failed": len(components_by_status[HealthStatus.FAILED]),
+            "components": {
+                status.value: names for status, names in components_by_status.items()
+            },
         }
 
     def get_stats(self) -> Dict:
         """Get recovery statistics"""
         return {
             **self.stats,
-            'monitored_components': len(self.components),
-            'recovery_success_rate': (
-                self.stats['auto_recoveries'] / self.stats['total_failures']
-                if self.stats['total_failures'] > 0 else 0
-            )
+            "monitored_components": len(self.components),
+            "recovery_success_rate": (
+                self.stats["auto_recoveries"] / self.stats["total_failures"]
+                if self.stats["total_failures"] > 0
+                else 0
+            ),
         }
 
 
@@ -281,18 +281,22 @@ class AutoRecovery:
 # Pre-built Recovery Strategies
 # ============================================================================
 
+
 class RecoveryStrategies:
     """Common recovery strategies"""
 
     @staticmethod
     def restart_process(process_name: str) -> Callable[[], bool]:
         """Restart a process"""
+
         def recover():
             import subprocess
+
             try:
                 # Kill process
-                subprocess.run(['taskkill', '/F', '/IM', process_name],
-                             capture_output=True)
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", process_name], capture_output=True
+                )
                 time.sleep(2)
 
                 # Restart (simplified - actual implementation would vary)
@@ -309,6 +313,7 @@ class RecoveryStrategies:
     @staticmethod
     def clear_queue() -> Callable[[], bool]:
         """Clear message queue"""
+
         def recover():
             try:
                 # Implementation would clear actual queue
@@ -323,6 +328,7 @@ class RecoveryStrategies:
     @staticmethod
     def reconnect_database() -> Callable[[], bool]:
         """Reconnect to database"""
+
         def recover():
             try:
                 # Implementation would reconnect to DB
@@ -337,6 +343,7 @@ class RecoveryStrategies:
     @staticmethod
     def flush_cache() -> Callable[[], bool]:
         """Flush cache"""
+
         def recover():
             try:
                 # Implementation would flush actual cache
@@ -353,51 +360,55 @@ class RecoveryStrategies:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🔧 Auto-Recovery System Test")
-    print("="*70)
+    print("=" * 70)
 
     recovery = AutoRecovery(check_interval=5)
 
     # Mock health check functions
-    failure_count = {'server': 0, 'database': 0}
+    failure_count = {"server": 0, "database": 0}
 
     def check_server():
-        failure_count['server'] += 1
+        failure_count["server"] += 1
         # Simulate intermittent failure
-        return failure_count['server'] % 3 != 0
+        return failure_count["server"] % 3 != 0
 
     def check_database():
-        failure_count['database'] += 1
-        return failure_count['database'] % 5 != 0
+        failure_count["database"] += 1
+        return failure_count["database"] % 5 != 0
 
     def recover_server():
         logger.info("Recovering server...")
         time.sleep(1)
-        failure_count['server'] = 0
+        failure_count["server"] = 0
         return True
 
     def recover_database():
         logger.info("Recovering database...")
         time.sleep(1)
-        failure_count['database'] = 0
+        failure_count["database"] = 0
         return True
 
     # Register components
-    recovery.register_component(Component(
-        name="server",
-        check_func=check_server,
-        recovery_func=recover_server,
-        critical=True
-    ))
+    recovery.register_component(
+        Component(
+            name="server",
+            check_func=check_server,
+            recovery_func=recover_server,
+            critical=True,
+        )
+    )
 
-    recovery.register_component(Component(
-        name="database",
-        check_func=check_database,
-        recovery_func=recover_database,
-        critical=True
-    ))
+    recovery.register_component(
+        Component(
+            name="database",
+            check_func=check_database,
+            recovery_func=recover_database,
+            critical=True,
+        )
+    )
 
     # Register callbacks
     def on_failure(name):
@@ -406,8 +417,8 @@ if __name__ == '__main__':
     def on_recovery(name):
         print(f"   ✅ RECOVERY: {name} recovered!")
 
-    recovery.register_callback('on_failure', on_failure)
-    recovery.register_callback('on_recovery', on_recovery)
+    recovery.register_callback("on_failure", on_failure)
+    recovery.register_callback("on_recovery", on_recovery)
 
     # Start monitoring
     print("\n🔍 Starting monitoring (30 seconds)...")

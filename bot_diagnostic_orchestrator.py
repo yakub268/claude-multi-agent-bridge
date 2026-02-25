@@ -29,8 +29,9 @@ AGENTS = {
     "bot_inspector": "agent_bot_signals",
     "execution_tracer": "agent_execution_logs",
     "sizing_auditor": "agent_position_sizing",
-    "shadow_synthesizer": "agent_shadow_pnl"
+    "shadow_synthesizer": "agent_shadow_pnl",
 }
+
 
 class BridgeClient:
     """Simple client for Claude Multi-Agent Bridge"""
@@ -45,7 +46,7 @@ class BridgeClient:
                 "channel": to_channel or self.channel,
                 "sender": self.channel,
                 "content": content,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             response = requests.post(f"{BASE_URL}/send", json=payload, timeout=5)
             return response.status_code == 200
@@ -66,6 +67,7 @@ class BridgeClient:
         except Exception as e:
             print(f"❌ Poll failed: {e}")
             return []
+
 
 def create_task_assignments() -> Dict[str, str]:
     """Define tasks for each agent"""
@@ -112,7 +114,6 @@ You are analyzing the 6 winning manual trades from the trading bot.
 
 Send results to `diagnostic_orchestrator` channel when complete.
 """,
-
         "bot_inspector": """
 **TASK: Bot Signal Analysis**
 
@@ -157,7 +158,6 @@ You will receive manual trade timestamps from the orchestrator.
 
 Wait for manual trade data from orchestrator, then analyze.
 """,
-
         "execution_tracer": """
 **TASK: Execution Log Analysis**
 
@@ -200,7 +200,6 @@ You will receive trade timestamps from the orchestrator.
 
 Wait for trade list from orchestrator.
 """,
-
         "sizing_auditor": """
 **TASK: Position Sizing Comparison**
 
@@ -247,7 +246,6 @@ You will receive manual vs bot trade data from orchestrator.
 
 Wait for trade data from orchestrator.
 """,
-
         "shadow_synthesizer": """
 **TASK: Shadow P&L Analysis**
 
@@ -301,6 +299,7 @@ Start analysis immediately (no dependencies).
 """,
     }
 
+
 def run_orchestrator():
     """Main orchestrator loop"""
     orchestrator = BridgeClient(AGENTS["orchestrator"])
@@ -327,7 +326,8 @@ def run_orchestrator():
     print("\n" + "=" * 60)
     print("📊 PHASE 2: Coordination Instructions")
     print("=" * 60)
-    print("""
+    print(
+        """
 🎭 MANUAL SETUP REQUIRED:
 
 1. Open 5 NEW Claude Code windows (or Browser/Desktop instances)
@@ -378,7 +378,8 @@ def run_orchestrator():
 🚀 READY TO COORDINATE!
 
 Once agents start reporting, results will appear below...
-""")
+"""
+    )
 
     # Step 3: Wait for agent responses
     print("\n" + "=" * 60)
@@ -407,7 +408,11 @@ Once agents start reporting, results will appear below...
                     last_poll = timestamp
 
         if len(results) < 5:
-            print(f"\r⏳ Waiting for agents... ({len(results)}/5 complete)", end="", flush=True)
+            print(
+                f"\r⏳ Waiting for agents... ({len(results)}/5 complete)",
+                end="",
+                flush=True,
+            )
             time.sleep(5)
 
     print(f"\n\n{'='*60}")
@@ -425,11 +430,11 @@ Once agents start reporting, results will appear below...
         "diagnostic_summary": {
             "timestamp": datetime.now().isoformat(),
             "agents_completed": len(results),
-            "agent_results": results
+            "agent_results": results,
         },
         "divergence_analysis": "Orchestrator will analyze agent results to identify root cause",
         "root_cause_hypothesis": [],
-        "recommended_fixes": []
+        "recommended_fixes": [],
     }
 
     # Save full report
@@ -451,6 +456,7 @@ Once agents start reporting, results will appear below...
     print("=" * 60)
 
     return synthesis_report
+
 
 if __name__ == "__main__":
     run_orchestrator()

@@ -35,10 +35,7 @@ try:
     from mcp.server.stdio import stdio_server
     from mcp import types
 except ImportError:
-    print(
-        "mcp package not found. Install with: pip install mcp",
-        file=sys.stderr
-    )
+    print("mcp package not found. Install with: pip install mcp", file=sys.stderr)
     sys.exit(1)
 
 BRIDGE_URL = os.environ.get("BRIDGE_URL", "http://localhost:5001")
@@ -48,6 +45,7 @@ server = Server("claude-bridge")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _send(to: str, msg_type: str, payload: dict, from_c: str = "mcp") -> dict:
     resp = requests.post(
@@ -79,7 +77,10 @@ def _wait_for_reply(msg_id: str, timeout: int = DEFAULT_TIMEOUT) -> dict | None:
                     continue
                 seen.add(m["id"])
                 payload = m.get("payload", {})
-                if payload.get("reply_to") == msg_id or payload.get("request_id") == msg_id:
+                if (
+                    payload.get("reply_to") == msg_id
+                    or payload.get("request_id") == msg_id
+                ):
                     return m
         except Exception:
             pass
@@ -88,6 +89,7 @@ def _wait_for_reply(msg_id: str, timeout: int = DEFAULT_TIMEOUT) -> dict | None:
 
 
 # ── Tool definitions ──────────────────────────────────────────────────────────
+
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
@@ -213,10 +215,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
                 msg_type=arguments.get("type", "message"),
                 payload={"text": arguments["message"]},
             )
-            return [types.TextContent(
-                type="text",
-                text=f"✅ Sent to {arguments['to']} (id: {result.get('message_id')})"
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"✅ Sent to {arguments['to']} (id: {result.get('message_id')})",
+                )
+            ]
 
         elif name == "bridge_ask":
             sent = _send(
@@ -233,14 +237,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             reply = _wait_for_reply(msg_id, timeout=timeout)
             if reply:
                 payload = reply.get("payload", {})
-                text = payload.get("text") or payload.get("response") or json.dumps(payload)
+                text = (
+                    payload.get("text")
+                    or payload.get("response")
+                    or json.dumps(payload)
+                )
                 return [types.TextContent(type="text", text=text)]
             else:
-                return [types.TextContent(
-                    type="text",
-                    text=f"⏱️ No reply from {arguments['to']} within {timeout}s. "
-                         f"Message was delivered (id: {msg_id})."
-                )]
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"⏱️ No reply from {arguments['to']} within {timeout}s. "
+                        f"Message was delivered (id: {msg_id}).",
+                    )
+                ]
 
         elif name == "bridge_broadcast":
             result = _send(
@@ -248,10 +258,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
                 msg_type=arguments.get("type", "broadcast"),
                 payload={"text": arguments["message"]},
             )
-            return [types.TextContent(
-                type="text",
-                text=f"📡 Broadcast sent (id: {result.get('message_id')})"
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"📡 Broadcast sent (id: {result.get('message_id')})",
+                )
+            ]
 
         elif name == "bridge_messages":
             params = {}
@@ -265,8 +277,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
                 return [types.TextContent(type="text", text="No messages found.")]
             lines = []
             for m in messages:
-                payload_text = m.get("payload", {}).get("text", json.dumps(m["payload"]))
-                lines.append(f"[{m['timestamp']}] {m['from']} → {m['to']} ({m['type']}): {payload_text}")
+                payload_text = m.get("payload", {}).get(
+                    "text", json.dumps(m["payload"])
+                )
+                lines.append(
+                    f"[{m['timestamp']}] {m['from']} → {m['to']} ({m['type']}): {payload_text}"
+                )
             return [types.TextContent(type="text", text="\n".join(lines))]
 
         elif name == "bridge_search":
@@ -277,11 +293,19 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             )
             results = resp.json().get("results", [])
             if not results:
-                return [types.TextContent(type="text", text=f"No messages found for: {arguments['query']}")]
+                return [
+                    types.TextContent(
+                        type="text", text=f"No messages found for: {arguments['query']}"
+                    )
+                ]
             lines = []
             for m in results:
-                payload_text = m.get("payload", {}).get("text", json.dumps(m["payload"]))
-                lines.append(f"[{m['timestamp']}] {m['from']} → {m['to']}: {payload_text}")
+                payload_text = m.get("payload", {}).get(
+                    "text", json.dumps(m["payload"])
+                )
+                lines.append(
+                    f"[{m['timestamp']}] {m['from']} → {m['to']}: {payload_text}"
+                )
             return [types.TextContent(type="text", text="\n".join(lines))]
 
         elif name == "bridge_status":
@@ -293,18 +317,21 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except requests.ConnectionError:
-        return [types.TextContent(
-            type="text",
-            text=(
-                f"❌ Cannot connect to bridge at {BRIDGE_URL}. "
-                "Start the server: python server.py"
+        return [
+            types.TextContent(
+                type="text",
+                text=(
+                    f"❌ Cannot connect to bridge at {BRIDGE_URL}. "
+                    "Start the server: python server.py"
+                ),
             )
-        )]
+        ]
     except Exception as e:
         return [types.TextContent(type="text", text=f"❌ Error: {e}")]
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def main():
     async with stdio_server() as (read, write):
@@ -313,4 +340,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

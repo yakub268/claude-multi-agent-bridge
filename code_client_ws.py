@@ -28,7 +28,7 @@ class CodeClientWS:
 
     def __init__(self, client_id: str = "code", bus_url: str = "ws://localhost:5001"):
         self.client_id = client_id
-        self.bus_url = bus_url.replace('http://', 'ws://').replace('https://', 'wss://')
+        self.bus_url = bus_url.replace("http://", "ws://").replace("https://", "wss://")
         self.ws_url = f"{self.bus_url}/ws/{self.client_id}"
 
         self.ws = None
@@ -49,7 +49,7 @@ class CodeClientWS:
                 on_message=self._on_message,
                 on_error=self._on_error,
                 on_close=self._on_close,
-                on_open=self._on_open
+                on_open=self._on_open,
             )
 
             # Run in background thread
@@ -78,35 +78,35 @@ class CodeClientWS:
         """Handle incoming WebSocket message"""
         try:
             data = json.loads(message)
-            msg_type = data.get('type')
+            msg_type = data.get("type")
 
-            if msg_type == 'connection_confirmed':
+            if msg_type == "connection_confirmed":
                 print("🔌 Connection confirmed by server")
 
-            elif msg_type == 'message':
+            elif msg_type == "message":
                 # Actual message from another client
-                msg = data['message']
+                msg = data["message"]
 
                 with self.lock:
                     self.received_messages.append(msg)
 
                 # Auto-acknowledge if required
-                if msg.get('requires_ack'):
-                    self.acknowledge(msg['id'])
+                if msg.get("requires_ack"):
+                    self.acknowledge(msg["id"])
 
                 # Call registered handler
-                handler = self.handlers.get(msg['type'])
+                handler = self.handlers.get(msg["type"])
                 if handler:
                     try:
                         handler(msg)
                     except Exception as e:
                         print(f"❌ Handler error: {e}")
 
-            elif msg_type == 'pong':
+            elif msg_type == "pong":
                 # Ping response
                 pass
 
-            elif msg_type == 'error':
+            elif msg_type == "error":
                 print(f"❌ Server error: {data.get('error')}")
 
         except json.JSONDecodeError as e:
@@ -128,7 +128,9 @@ class CodeClientWS:
         time.sleep(self.reconnect_interval)
         self._connect()
 
-    def send(self, to: str, msg_type: str, payload: Dict, require_ack: bool = False) -> bool:
+    def send(
+        self, to: str, msg_type: str, payload: Dict, require_ack: bool = False
+    ) -> bool:
         """
         Send message to another client
 
@@ -147,11 +149,11 @@ class CodeClientWS:
 
         try:
             message = {
-                'type': 'send',
-                'to': to,
-                'msg_type': msg_type,
-                'payload': payload,
-                'require_ack': require_ack
+                "type": "send",
+                "to": to,
+                "msg_type": msg_type,
+                "payload": payload,
+                "require_ack": require_ack,
             }
 
             self.ws.send(json.dumps(message))
@@ -167,10 +169,7 @@ class CodeClientWS:
             return False
 
         try:
-            ack = {
-                'type': 'ack',
-                'message_id': message_id
-            }
+            ack = {"type": "ack", "message_id": message_id}
 
             self.ws.send(json.dumps(ack))
             return True
@@ -191,7 +190,9 @@ class CodeClientWS:
         """
         self.handlers[msg_type] = handler
 
-    def get_messages(self, msg_type: Optional[str] = None, clear: bool = False) -> List[Dict]:
+    def get_messages(
+        self, msg_type: Optional[str] = None, clear: bool = False
+    ) -> List[Dict]:
         """
         Get received messages
 
@@ -204,7 +205,7 @@ class CodeClientWS:
         """
         with self.lock:
             if msg_type:
-                messages = [m for m in self.received_messages if m['type'] == msg_type]
+                messages = [m for m in self.received_messages if m["type"] == msg_type]
             else:
                 messages = self.received_messages.copy()
 
@@ -240,7 +241,7 @@ class CodeClientWS:
             return False
 
         try:
-            self.ws.send(json.dumps({'type': 'ping'}))
+            self.ws.send(json.dumps({"type": "ping"}))
             return True
         except Exception as e:
             logger.error(f"Ping failed: {e}")
@@ -257,10 +258,10 @@ class CodeClientWS:
 # Example Usage
 # ============================================================================
 
-if __name__ == '__main__':
-    print("="*70)
+if __name__ == "__main__":
+    print("=" * 70)
     print("🧪 WebSocket Client Test")
-    print("="*70)
+    print("=" * 70)
 
     # Create client
     client = CodeClientWS(client_id="code")
@@ -278,22 +279,21 @@ if __name__ == '__main__':
         print(f"   From: {msg['from']}")
         print(f"   Payload: {msg['payload']}")
 
-    client.on('claude_response', handle_response)
-    client.on('test', handle_response)
+    client.on("claude_response", handle_response)
+    client.on("test", handle_response)
 
     # Send test message
     print("\n📤 Sending test message to browser...")
-    success = client.send('browser', 'command', {
-        'action': 'run_prompt',
-        'text': 'What is 2+2?'
-    })
+    success = client.send(
+        "browser", "command", {"action": "run_prompt", "text": "What is 2+2?"}
+    )
 
     if success:
         print("✅ Message sent")
 
         # Wait for response
         print("⏳ Waiting for response (10 seconds)...")
-        response = client.wait_for_message('claude_response', timeout=10)
+        response = client.wait_for_message("claude_response", timeout=10)
 
         if response:
             print(f"\n✅ Got response: {response['payload']}")

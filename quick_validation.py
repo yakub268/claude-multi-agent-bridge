@@ -34,10 +34,10 @@ def test_send_receive():
     try:
         # Send message
         payload = {
-            'from': 'code',
-            'to': 'browser',
-            'type': 'test',
-            'payload': {'test_id': 'validation-' + str(time.time())}
+            "from": "code",
+            "to": "browser",
+            "type": "test",
+            "payload": {"test_id": "validation-" + str(time.time())},
         }
 
         r = requests.post("http://localhost:5001/api/send", json=payload, timeout=5)
@@ -52,7 +52,7 @@ def test_send_receive():
         r = requests.get("http://localhost:5001/api/messages?to=browser", timeout=5)
         if r.status_code == 200:
             data = r.json()
-            count = data.get('count', 0)
+            count = data.get("count", 0)
             print(f"✅ Retrieved {count} messages for browser")
             return True
         else:
@@ -76,10 +76,13 @@ def test_bulk_messages():
 
         for i in range(count):
             payload = {
-                'from': 'code',
-                'to': 'browser',
-                'type': 'bulk_test',
-                'payload': {'seq': i, 'timestamp': datetime.now(timezone.utc).isoformat()}
+                "from": "code",
+                "to": "browser",
+                "type": "bulk_test",
+                "payload": {
+                    "seq": i,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
             }
 
             r = requests.post("http://localhost:5001/api/send", json=payload, timeout=5)
@@ -106,13 +109,15 @@ def test_concurrent():
         try:
             for i in range(5):
                 payload = {
-                    'from': 'code',
-                    'to': 'browser',
-                    'type': 'concurrent_test',
-                    'payload': {'thread': thread_id, 'seq': i}
+                    "from": "code",
+                    "to": "browser",
+                    "type": "concurrent_test",
+                    "payload": {"thread": thread_id, "seq": i},
                 }
 
-                r = requests.post("http://localhost:5001/api/send", json=payload, timeout=5)
+                r = requests.post(
+                    "http://localhost:5001/api/send", json=payload, timeout=5
+                )
                 if r.status_code == 200:
                     successes.append(1)
                 else:
@@ -146,39 +151,51 @@ def test_channel_isolation():
         # Send distinct messages to different channels
         timestamp = str(time.time())
 
-        requests.post("http://localhost:5001/api/send", json={
-            'from': 'code',
-            'to': 'browser',
-            'type': 'isolation_test',
-            'payload': {'target': 'browser', 'ts': timestamp}
-        }, timeout=5)
+        requests.post(
+            "http://localhost:5001/api/send",
+            json={
+                "from": "code",
+                "to": "browser",
+                "type": "isolation_test",
+                "payload": {"target": "browser", "ts": timestamp},
+            },
+            timeout=5,
+        )
 
-        requests.post("http://localhost:5001/api/send", json={
-            'from': 'code',
-            'to': 'desktop',
-            'type': 'isolation_test',
-            'payload': {'target': 'desktop', 'ts': timestamp}
-        }, timeout=5)
+        requests.post(
+            "http://localhost:5001/api/send",
+            json={
+                "from": "code",
+                "to": "desktop",
+                "type": "isolation_test",
+                "payload": {"target": "desktop", "ts": timestamp},
+            },
+            timeout=5,
+        )
 
         time.sleep(0.5)
 
         # Check each channel only has its own messages
-        browser_data = requests.get("http://localhost:5001/api/messages?to=browser", timeout=5).json()
-        desktop_data = requests.get("http://localhost:5001/api/messages?to=desktop", timeout=5).json()
+        browser_data = requests.get(
+            "http://localhost:5001/api/messages?to=browser", timeout=5
+        ).json()
+        desktop_data = requests.get(
+            "http://localhost:5001/api/messages?to=desktop", timeout=5
+        ).json()
 
-        browser_msgs = browser_data.get('messages', [])
-        desktop_msgs = desktop_data.get('messages', [])
+        browser_msgs = browser_data.get("messages", [])
+        desktop_msgs = desktop_data.get("messages", [])
 
         # Check for cross-contamination
         browser_has_desktop = any(
-            msg.get('payload', {}).get('target') == 'desktop' and
-            msg.get('payload', {}).get('ts') == timestamp
+            msg.get("payload", {}).get("target") == "desktop"
+            and msg.get("payload", {}).get("ts") == timestamp
             for msg in browser_msgs
         )
 
         desktop_has_browser = any(
-            msg.get('payload', {}).get('target') == 'browser' and
-            msg.get('payload', {}).get('ts') == timestamp
+            msg.get("payload", {}).get("target") == "browser"
+            and msg.get("payload", {}).get("ts") == timestamp
             for msg in desktop_msgs
         )
 
@@ -228,5 +245,5 @@ def main():
     return 0 if all_passed else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())

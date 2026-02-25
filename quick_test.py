@@ -1,6 +1,7 @@
 """
 Quick test - send prompt and wait for correct response
 """
+
 from code_client import CodeClient
 import time
 
@@ -17,10 +18,7 @@ time.sleep(1)
 question = "What is 9 + 3? Reply with JUST the number."
 print(f"📤 Sending: {question}")
 
-client.send("browser", "command", {
-    "action": "run_prompt",
-    "text": question
-})
+client.send("browser", "command", {"action": "run_prompt", "text": question})
 
 print("⏳ Waiting for response (20 seconds)...\n")
 
@@ -32,20 +30,22 @@ while (time.time() - start) < 20:
     messages = client.poll()
 
     for msg in messages:
-        msg_id = msg.get('id')
+        msg_id = msg.get("id")
         if msg_id in seen:
             continue
         seen.add(msg_id)
 
-        if msg.get('from') == 'browser' and msg.get('type') == 'claude_response':
-            payload = msg.get('payload', {})
-            response = payload.get('response', '')
+        if msg.get("from") == "browser" and msg.get("type") == "claude_response":
+            payload = msg.get("payload", {})
+            response = payload.get("response", "")
 
             print(f"✅ Got response: {response}\n")
 
             # Check if it's the correct answer (12) not the prompt
-            if '12' in response and question not in response:
-                print("🎉 SUCCESS! Extension is extracting Claude's responses correctly!")
+            if "12" in response and question not in response:
+                print(
+                    "🎉 SUCCESS! Extension is extracting Claude's responses correctly!"
+                )
                 response_found = True
                 break
             elif question in response:

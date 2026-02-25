@@ -1,6 +1,7 @@
 """
 Demo: Three-way communication between Code, Browser, and Desktop
 """
+
 import time
 from code_client import CodeClient
 
@@ -33,8 +34,8 @@ def main():
         msg_type="command",
         payload={
             "action": "run_prompt",
-            "text": "What's the cube root of 27? Reply with just the number."
-        }
+            "text": "What's the cube root of 27? Reply with just the number.",
+        },
     )
 
     if success:
@@ -51,12 +52,15 @@ def main():
     print("=" * 50)
     print("Broadcasting status to all clients...")
 
-    client.broadcast("status", {
-        "source": "code",
-        "message": "Trading bot started",
-        "balance": 1250.50,
-        "active_positions": 3
-    })
+    client.broadcast(
+        "status",
+        {
+            "source": "code",
+            "message": "Trading bot started",
+            "balance": 1250.50,
+            "active_positions": 3,
+        },
+    )
 
     print("✅ Broadcast sent\n")
     time.sleep(1)

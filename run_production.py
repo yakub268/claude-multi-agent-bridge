@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def main():
     print("=" * 80)
     print("🚀 CLAUDE MULTI-AGENT BRIDGE - Production Server")
@@ -32,12 +33,12 @@ def main():
         # Serve with waitress
         serve(
             app,
-            host='0.0.0.0',
+            host="0.0.0.0",
             port=5001,
             threads=8,  # Thread pool size
             channel_timeout=120,
             cleanup_interval=30,
-            send_bytes=65536
+            send_bytes=65536,
         )
 
     except ImportError:
@@ -61,9 +62,10 @@ def main():
         print()
         print(f"ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MessageSummary:
     """Summary of a message thread"""
+
     channel: str
     message_count: int
     time_range: str
@@ -44,9 +45,9 @@ class AISummarizer:
     - Tracks participant activity
     """
 
-    def __init__(self,
-                 auto_summarize_threshold: int = 50,
-                 summary_length: str = "concise"):
+    def __init__(
+        self, auto_summarize_threshold: int = 50, summary_length: str = "concise"
+    ):
         """
         Args:
             auto_summarize_threshold: Message count before auto-summary
@@ -82,10 +83,9 @@ class AISummarizer:
         messages_since_last = message_count - last_summary.message_count
         return messages_since_last >= self.auto_summarize_threshold
 
-    def summarize_messages(self,
-                          messages: List[Dict],
-                          channel: str = "main",
-                          use_ai: bool = True) -> MessageSummary:
+    def summarize_messages(
+        self, messages: List[Dict], channel: str = "main", use_ai: bool = True
+    ) -> MessageSummary:
         """
         Summarize message thread
 
@@ -106,7 +106,7 @@ class AISummarizer:
                 key_decisions=[],
                 action_items=[],
                 top_contributors=[],
-                generated_at=datetime.now(timezone.utc).isoformat()
+                generated_at=datetime.now(timezone.utc).isoformat(),
             )
 
         # Extract metadata
@@ -116,14 +116,12 @@ class AISummarizer:
         # Count participants
         participant_counts = defaultdict(int)
         for msg in messages:
-            participant_counts[msg['from_client']] += 1
+            participant_counts[msg["from_client"]] += 1
 
         top_contributors = [
             {client: count}
             for client, count in sorted(
-                participant_counts.items(),
-                key=lambda x: x[1],
-                reverse=True
+                participant_counts.items(), key=lambda x: x[1], reverse=True
             )[:5]
         ]
 
@@ -138,11 +136,11 @@ class AISummarizer:
             channel=channel,
             message_count=message_count,
             time_range=time_range,
-            summary=summary_result['summary'],
-            key_decisions=summary_result['decisions'],
-            action_items=summary_result['action_items'],
+            summary=summary_result["summary"],
+            key_decisions=summary_result["decisions"],
+            action_items=summary_result["action_items"],
             top_contributors=top_contributors,
-            generated_at=datetime.now(timezone.utc).isoformat()
+            generated_at=datetime.now(timezone.utc).isoformat(),
         )
 
         # Cache summary
@@ -173,9 +171,11 @@ class AISummarizer:
         length_instructions = {
             "brie": "Summarize in 3-5 sentences.",
             "concise": "Summarize in 1-2 paragraphs.",
-            "detailed": "Provide a detailed summary in 3+ paragraphs."
+            "detailed": "Provide a detailed summary in 3+ paragraphs.",
         }
-        length_instruction = length_instructions.get(self.summary_length, length_instructions['concise'])
+        length_instruction = length_instructions.get(
+            self.summary_length, length_instructions["concise"]
+        )
 
         # Create prompt
         prompt = """Analyze this collaboration room discussion and provide:
@@ -210,18 +210,20 @@ Format your response as JSON:
                     prompt=prompt,
                     model="gpt-4o-mini",  # Cost-effective for summaries
                     max_tokens=800,
-                    temperature=0.3  # Lower temperature for factual summaries
+                    temperature=0.3,  # Lower temperature for factual summaries
                 )
 
                 # Parse JSON response
                 result = json.loads(response) if isinstance(response, str) else response
 
-                logger.info(f"✅ Generated AI summary using GPT-4o-mini for {len(messages)} messages in channel '{channel}'")
+                logger.info(
+                    f"✅ Generated AI summary using GPT-4o-mini for {len(messages)} messages in channel '{channel}'"
+                )
 
                 return {
-                    'summary': result.get('summary', ''),
-                    'decisions': result.get('decisions', []),
-                    'action_items': result.get('action_items', [])
+                    "summary": result.get("summary", ""),
+                    "decisions": result.get("decisions", []),
+                    "action_items": result.get("action_items", []),
                 }
 
             except ImportError:
@@ -229,38 +231,50 @@ Format your response as JSON:
                 logger.warning("OpenAI MCP not available, trying direct API")
 
                 import openai
-                api_key = os.getenv('OPENAI_API_KEY')
+
+                api_key = os.getenv("OPENAI_API_KEY")
 
                 if not api_key:
-                    logger.error("❌ OPENAI_API_KEY environment variable not set. AI summarization unavailable.")
+                    logger.error(
+                        "❌ OPENAI_API_KEY environment variable not set. AI summarization unavailable."
+                    )
                     logger.error("   Set the API key: export OPENAI_API_KEY=sk-...")
-                    raise ValueError("OpenAI API key required for AI summarization. Set OPENAI_API_KEY environment variable.")
+                    raise ValueError(
+                        "OpenAI API key required for AI summarization. Set OPENAI_API_KEY environment variable."
+                    )
 
                 client = openai.OpenAI(api_key=api_key)
 
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "You are a helpful assistant that summarizes collaboration discussions. Always respond with valid JSON."},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "You are a helpful assistant that summarizes collaboration discussions. Always respond with valid JSON.",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
                     response_format={"type": "json_object"},
                     max_tokens=800,
-                    temperature=0.3
+                    temperature=0.3,
                 )
 
                 result = json.loads(response.choices[0].message.content)
 
-                logger.info(f"✅ Generated AI summary using OpenAI API for {len(messages)} messages in channel '{channel}'")
+                logger.info(
+                    f"✅ Generated AI summary using OpenAI API for {len(messages)} messages in channel '{channel}'"
+                )
 
                 return {
-                    'summary': result.get('summary', ''),
-                    'decisions': result.get('decisions', []),
-                    'action_items': result.get('action_items', [])
+                    "summary": result.get("summary", ""),
+                    "decisions": result.get("decisions", []),
+                    "action_items": result.get("action_items", []),
                 }
 
         except Exception as e:
-            logger.error(f"AI summarization failed: {e}, falling back to simple extraction")
+            logger.error(
+                f"AI summarization failed: {e}, falling back to simple extraction"
+            )
             return self._summarize_simple(messages)
 
     def _summarize_simple(self, messages: List[Dict]) -> Dict:
@@ -277,11 +291,7 @@ Format your response as JSON:
         decisions = self._extract_decisions(messages)
         actions = self._extract_action_items(messages)
 
-        return {
-            'summary': summary,
-            'decisions': decisions,
-            'action_items': actions
-        }
+        return {"summary": summary, "decisions": decisions, "action_items": actions}
 
     def _extract_simple_summary(self, messages: List[Dict]) -> str:
         """Extract simple summary from messages"""
@@ -289,11 +299,11 @@ Format your response as JSON:
             return "No discussion."
 
         # Get unique participants
-        participants = set(msg['from_client'] for msg in messages)
+        participants = set(msg["from_client"] for msg in messages)
 
         # Count message types
-        code_messages = sum(1 for msg in messages if 'code' in msg.get('type', ''))
-        file_messages = sum(1 for msg in messages if 'file' in msg.get('type', ''))
+        code_messages = sum(1 for msg in messages if "code" in msg.get("type", ""))
+        file_messages = sum(1 for msg in messages if "file" in msg.get("type", ""))
 
         summary_parts = [
             f"{len(messages)} messages from {len(participants)} participants."
@@ -310,10 +320,10 @@ Format your response as JSON:
         """Extract decisions from messages"""
         decisions = []
 
-        decision_keywords = ['approved', 'consensus', 'voted', 'decided', 'agreed']
+        decision_keywords = ["approved", "consensus", "voted", "decided", "agreed"]
 
         for msg in messages:
-            text = msg.get('text', '').lower()
+            text = msg.get("text", "").lower()
             if any(keyword in text for keyword in decision_keywords):
                 # Found potential decision
                 decisions.append(f"{msg['from_client']}: {msg['text'][:100]}")
@@ -324,10 +334,18 @@ Format your response as JSON:
         """Extract action items from messages"""
         action_items = []
 
-        action_keywords = ['todo', 'task', 'action item', 'need to', 'should', 'will', 'going to']
+        action_keywords = [
+            "todo",
+            "task",
+            "action item",
+            "need to",
+            "should",
+            "will",
+            "going to",
+        ]
 
         for msg in messages:
-            text = msg.get('text', '').lower()
+            text = msg.get("text", "").lower()
             if any(keyword in text for keyword in action_keywords):
                 # Found potential action item
                 action_items.append(f"{msg['from_client']}: {msg['text'][:100]}")
@@ -355,7 +373,7 @@ Format your response as JSON:
                 "",
                 "## Summary",
                 summary.summary,
-                ""
+                "",
             ]
 
             if summary.key_decisions:
@@ -386,7 +404,7 @@ Format your response as JSON:
                 "",
                 "Summary:",
                 summary.summary,
-                ""
+                "",
             ]
 
             if summary.key_decisions:
@@ -417,14 +435,14 @@ Format your response as JSON:
             summary: MessageSummary object
             filepath: Output file path
         """
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(asdict(summary), f, indent=2)
 
         logger.info(f"Summary exported to {filepath}")
 
 
 # Example usage
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 80)
     print("🤖 AI Message Summarization - Test")
     print("=" * 80)
@@ -433,20 +451,50 @@ if __name__ == '__main__':
 
     # Sample messages
     messages = [
-        {'from_client': 'claude-code', 'text': 'Let\'s build a trading bot', 'timestamp': '2026-02-22T10:00:00Z'},
-        {'from_client': 'claude-desktop-1', 'text': 'I agree! Should we use FastAPI?', 'timestamp': '2026-02-22T10:01:00Z'},
-        {'from_client': 'claude-desktop-2', 'text': 'FastAPI sounds good. I can handle the database layer.', 'timestamp': '2026-02-22T10:02:00Z'},
-        {'from_client': 'claude-code', 'text': 'Voted: Use FastAPI - APPROVED', 'timestamp': '2026-02-22T10:03:00Z'},
-        {'from_client': 'claude-desktop-1', 'text': 'TODO: Set up FastAPI project structure', 'timestamp': '2026-02-22T10:04:00Z'},
-        {'from_client': 'claude-desktop-2', 'text': 'I will create the SQLAlchemy models', 'timestamp': '2026-02-22T10:05:00Z'},
-        {'from_client': 'claude-code', 'text': 'Action item: Write API documentation', 'timestamp': '2026-02-22T10:06:00Z'},
+        {
+            "from_client": "claude-code",
+            "text": "Let's build a trading bot",
+            "timestamp": "2026-02-22T10:00:00Z",
+        },
+        {
+            "from_client": "claude-desktop-1",
+            "text": "I agree! Should we use FastAPI?",
+            "timestamp": "2026-02-22T10:01:00Z",
+        },
+        {
+            "from_client": "claude-desktop-2",
+            "text": "FastAPI sounds good. I can handle the database layer.",
+            "timestamp": "2026-02-22T10:02:00Z",
+        },
+        {
+            "from_client": "claude-code",
+            "text": "Voted: Use FastAPI - APPROVED",
+            "timestamp": "2026-02-22T10:03:00Z",
+        },
+        {
+            "from_client": "claude-desktop-1",
+            "text": "TODO: Set up FastAPI project structure",
+            "timestamp": "2026-02-22T10:04:00Z",
+        },
+        {
+            "from_client": "claude-desktop-2",
+            "text": "I will create the SQLAlchemy models",
+            "timestamp": "2026-02-22T10:05:00Z",
+        },
+        {
+            "from_client": "claude-code",
+            "text": "Action item: Write API documentation",
+            "timestamp": "2026-02-22T10:06:00Z",
+        },
     ]
 
     print(f"\n📨 Processing {len(messages)} messages...")
 
     # Check if should summarize
     should_summarize = summarizer.should_summarize("main", len(messages))
-    print(f"Should summarize (threshold={summarizer.auto_summarize_threshold}): {should_summarize}")
+    print(
+        f"Should summarize (threshold={summarizer.auto_summarize_threshold}): {should_summarize}"
+    )
 
     # Generate summary
     summary = summarizer.summarize_messages(messages, channel="main", use_ai=False)
@@ -462,6 +510,8 @@ if __name__ == '__main__':
     # Test auto-summarize check
     print("\n📊 Message count tracking:")
     print(f"   main: {summarizer.message_counts['main']} messages")
-    print(f"   Should summarize again with 5 more messages: {summarizer.should_summarize('main', len(messages) + 5)}")
+    print(
+        f"   Should summarize again with 5 more messages: {summarizer.should_summarize('main', len(messages) + 5)}"
+    )
 
     print("\n✅ AI Summarization test complete!")

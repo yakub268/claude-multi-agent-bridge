@@ -24,7 +24,15 @@ logger = logging.getLogger(__name__)
 
 # Try to import prometheus_client
 try:
-    from prometheus_client import Counter, Gauge, Histogram, Summary, generate_latest, REGISTRY
+    from prometheus_client import (
+        Counter,
+        Gauge,
+        Histogram,
+        Summary,
+        generate_latest,
+        REGISTRY,
+    )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -55,7 +63,9 @@ class MetricsCollector:
     _latencies: deque = field(default_factory=lambda: deque(maxlen=1000))
 
     # Active tracking
-    _active_connections: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    _active_connections: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
     _active_rooms: Dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -64,56 +74,45 @@ class MetricsCollector:
 
         # Define Prometheus metrics
         self.messages_total = Counter(
-            'bridge_messages_total',
-            'Total messages sent through bridge',
-            ['from_client', 'to_client']
+            "bridge_messages_total",
+            "Total messages sent through bridge",
+            ["from_client", "to_client"],
         )
 
         self.messages_errors = Counter(
-            'bridge_messages_errors_total',
-            'Total message errors',
-            ['error_type']
+            "bridge_messages_errors_total", "Total message errors", ["error_type"]
         )
 
         self.connections_active = Gauge(
-            'bridge_connections_active',
-            'Currently active WebSocket connections',
-            ['client_id']
+            "bridge_connections_active",
+            "Currently active WebSocket connections",
+            ["client_id"],
         )
 
         self.connections_total = Counter(
-            'bridge_connections_total',
-            'Total WebSocket connections',
-            ['client_id']
+            "bridge_connections_total", "Total WebSocket connections", ["client_id"]
         )
 
         self.rooms_active = Gauge(
-            'bridge_rooms_active',
-            'Currently active collaboration rooms'
+            "bridge_rooms_active", "Currently active collaboration rooms"
         )
 
         self.room_members = Gauge(
-            'bridge_room_members',
-            'Members in collaboration room',
-            ['room_id']
+            "bridge_room_members", "Members in collaboration room", ["room_id"]
         )
 
         self.room_messages = Counter(
-            'bridge_room_messages_total',
-            'Total room messages',
-            ['room_id', 'channel']
+            "bridge_room_messages_total", "Total room messages", ["room_id", "channel"]
         )
 
         self.message_latency = Histogram(
-            'bridge_message_latency_seconds',
-            'Message delivery latency',
-            buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+            "bridge_message_latency_seconds",
+            "Message delivery latency",
+            buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0],
         )
 
         self.operation_latency = Summary(
-            'bridge_operation_duration_seconds',
-            'Operation duration',
-            ['operation']
+            "bridge_operation_duration_seconds", "Operation duration", ["operation"]
         )
 
         logger.info("✅ Prometheus metrics initialized")
@@ -122,13 +121,17 @@ class MetricsCollector:
     # Message Metrics
     # ========================================================================
 
-    def record_message(self, from_client: str, to_client: str, latency_ms: Optional[float] = None):
+    def record_message(
+        self, from_client: str, to_client: str, latency_ms: Optional[float] = None
+    ):
         """Record a message sent"""
         self._message_count += 1
         self._message_timestamps.append(time.time())
 
         if PROMETHEUS_AVAILABLE:
-            self.messages_total.labels(from_client=from_client, to_client=to_client).inc()
+            self.messages_total.labels(
+                from_client=from_client, to_client=to_client
+            ).inc()
 
             if latency_ms is not None:
                 self.message_latency.observe(latency_ms / 1000.0)
@@ -158,7 +161,9 @@ class MetricsCollector:
 
         if PROMETHEUS_AVAILABLE:
             self.connections_total.labels(client_id=client_id).inc()
-            self.connections_active.labels(client_id=client_id).set(self._active_connections[client_id])
+            self.connections_active.labels(client_id=client_id).set(
+                self._active_connections[client_id]
+            )
 
     def record_connection_close(self, client_id: str):
         """Record connection closed"""
@@ -205,7 +210,9 @@ class MetricsCollector:
             self._active_rooms[room_id] += 1
 
             if PROMETHEUS_AVAILABLE:
-                self.room_members.labels(room_id=room_id).set(self._active_rooms[room_id])
+                self.room_members.labels(room_id=room_id).set(
+                    self._active_rooms[room_id]
+                )
 
     def record_room_member_leave(self, room_id: str):
         """Record member left room"""
@@ -213,7 +220,9 @@ class MetricsCollector:
             self._active_rooms[room_id] -= 1
 
             if PROMETHEUS_AVAILABLE:
-                self.room_members.labels(room_id=room_id).set(self._active_rooms[room_id])
+                self.room_members.labels(room_id=room_id).set(
+                    self._active_rooms[room_id]
+                )
 
     def record_room_message(self, room_id: str, channel: str = "main"):
         """Record room message"""
@@ -240,26 +249,26 @@ class MetricsCollector:
     def get_summary(self) -> Dict:
         """Get metrics summary"""
         return {
-            'messages': {
-                'total': self._message_count,
-                'rate_per_second': round(self.get_message_rate(60), 2),
-                'errors': self._error_count
+            "messages": {
+                "total": self._message_count,
+                "rate_per_second": round(self.get_message_rate(60), 2),
+                "errors": self._error_count,
             },
-            'connections': {
-                'total': self._connection_count,
-                'active': self.get_active_connections(),
-                'by_client': dict(self._active_connections)
+            "connections": {
+                "total": self._connection_count,
+                "active": self.get_active_connections(),
+                "by_client": dict(self._active_connections),
             },
-            'rooms': {
-                'total': self._room_count,
-                'active': len(self._active_rooms),
-                'members_by_room': dict(self._active_rooms)
+            "rooms": {
+                "total": self._room_count,
+                "active": len(self._active_rooms),
+                "members_by_room": dict(self._active_rooms),
             },
-            'latency': {
-                'p50_ms': self.get_latency_percentile(0.50),
-                'p95_ms': self.get_latency_percentile(0.95),
-                'p99_ms': self.get_latency_percentile(0.99)
-            }
+            "latency": {
+                "p50_ms": self.get_latency_percentile(0.50),
+                "p95_ms": self.get_latency_percentile(0.95),
+                "p99_ms": self.get_latency_percentile(0.99),
+            },
         }
 
 
@@ -270,29 +279,32 @@ def create_metrics_endpoint():
 
     app = Flask(__name__)
 
-    @app.route('/metrics')
+    @app.route("/metrics")
     def metrics():
         """Prometheus metrics endpoint"""
         if not PROMETHEUS_AVAILABLE:
             return Response("Prometheus client not installed", status=500)
 
-        return Response(generate_latest(REGISTRY), mimetype='text/plain')
+        return Response(generate_latest(REGISTRY), mimetype="text/plain")
 
-    @app.route('/health')
+    @app.route("/health")
     def health():
         """Health check endpoint"""
-        return {'status': 'healthy', 'timestamp': datetime.now(timezone.utc).isoformat()}
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     return app
 
 
 # Standalone monitoring server
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Prometheus monitoring server")
-    parser.add_argument('--port', type=int, default=9090, help='Metrics port')
-    parser.add_argument('--host', default='0.0.0.0', help='Bind host')
+    parser.add_argument("--port", type=int, default=9090, help="Metrics port")
+    parser.add_argument("--host", default="0.0.0.0", help="Bind host")
 
     args = parser.parse_args()
 
@@ -309,12 +321,14 @@ if __name__ == '__main__':
     print(f"Health endpoint:  http://{args.host}:{args.port}/health")
     print()
     print("Configure Prometheus to scrape:")
-    print("""
+    print(
+        """
 scrape_configs:
   - job_name: 'claude-bridge'
     static_configs:
       - targets: ['{args.host}:{args.port}']
-""")
+"""
+    )
     print("=" * 80)
     print()
 

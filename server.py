@@ -9,6 +9,7 @@ Phase 1 upgrades:
 - Event sourcing (append-only, full audit trail)
 - /api/search endpoint for agents to find context
 """
+
 import json
 import queue
 import sqlite3
@@ -33,6 +34,7 @@ _subscribers_lock = threading.Lock()
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
+
 def get_db():
     if not hasattr(db_local, "conn"):
         db_local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -42,7 +44,8 @@ def get_db():
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE IF NOT EXISTS messages (
             id        TEXT PRIMARY KEY,
             seq       INTEGER NOT NULL,
@@ -77,7 +80,8 @@ def init_db():
             INSERT INTO messages_fts(rowid, id, msg_type, payload)
             VALUES (new.rowid, new.id, new.msg_type, new.payload);
         END;
-    """)
+    """
+    )
     conn.commit()
     conn.close()
 
@@ -93,8 +97,15 @@ def insert_message(msg: dict) -> None:
     conn.execute(
         "INSERT INTO messages (id, seq, ts, from_c, to_c, msg_type, payload) "
         "VALUES (?,?,?,?,?,?,?)",
-        (msg["id"], seq, msg["timestamp"], msg["from"], msg["to"],
-         msg["type"], json.dumps(msg["payload"]))
+        (
+            msg["id"],
+            seq,
+            msg["timestamp"],
+            msg["from"],
+            msg["to"],
+            msg["type"],
+            json.dumps(msg["payload"]),
+        ),
     )
     conn.commit()
 
@@ -102,19 +113,22 @@ def insert_message(msg: dict) -> None:
 def rows_to_messages(rows) -> list[dict]:
     out = []
     for r in rows:
-        out.append({
-            "id": r["id"],
-            "seq": r["seq"],
-            "timestamp": r["ts"],
-            "from": r["from_c"],
-            "to": r["to_c"],
-            "type": r["msg_type"],
-            "payload": json.loads(r["payload"]),
-        })
+        out.append(
+            {
+                "id": r["id"],
+                "seq": r["seq"],
+                "timestamp": r["ts"],
+                "from": r["from_c"],
+                "to": r["to_c"],
+                "type": r["msg_type"],
+                "payload": json.loads(r["payload"]),
+            }
+        )
     return out
 
 
 # ── SSE fan-out ───────────────────────────────────────────────────────────────
+
 
 def _fanout(msg: dict, to_client: str):
     """Push message to all SSE subscribers interested in this client id."""
@@ -145,6 +159,7 @@ def _unregister(client_id: str, q: queue.Queue):
 
 # ── Message factory ───────────────────────────────────────────────────────────
 
+
 def make_message(data: dict) -> dict:
     return {
         "id": f"msg-{int(time.time() * 1000)}-{id(data) % 9999:04d}",
@@ -157,6 +172,7 @@ def make_message(data: dict) -> dict:
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
 
 @app.route("/api/send", methods=["POST"])
 def send_message():
@@ -176,13 +192,12 @@ def get_messages():
     conn = get_db()
     if to_filter == "all":
         rows = conn.execute(
-            "SELECT * FROM messages WHERE ts > ? ORDER BY seq",
-            (since,)
+            "SELECT * FROM messages WHERE ts > ? ORDER BY seq", (since,)
         ).fetchall()
     else:
         rows = conn.execute(
             "SELECT * FROM messages WHERE ts > ? AND to_c IN (?,?) ORDER BY seq",
-            (since, to_filter, "all")
+            (since, to_filter, "all"),
         ).fetchall()
 
     return jsonify({"messages": rows_to_messages(rows)})
@@ -206,7 +221,7 @@ def subscribe():
             if last_seq:
                 missed = conn.execute(
                     "SELECT * FROM messages WHERE seq > ? AND to_c IN (?,?) ORDER BY seq",
-                    (last_seq, client_id, "all")
+                    (last_seq, client_id, "all"),
                 ).fetchall()
                 for row in rows_to_messages(missed):
                     yield f"data: {json.dumps(row)}\n\n"
@@ -250,7 +265,7 @@ def search():
         ORDER BY m.seq DESC
         LIMIT ?
         """,
-        (q_str, limit)
+        (q_str, limit),
     ).fetchall()
 
     return jsonify({"results": rows_to_messages(rows), "query": q_str})
@@ -263,13 +278,15 @@ def status():
     with _subscribers_lock:
         active = {k: len(v) for k, v in _subscribers.items() if v}
 
-    return jsonify({
-        "status": "running",
-        "message_count": count,
-        "active_subscribers": active,
-        "transport": "SSE + polling fallback",
-        "persistence": "SQLite (append-only)",
-    })
+    return jsonify(
+        {
+            "status": "running",
+            "message_count": count,
+            "active_subscribers": active,
+            "transport": "SSE + polling fallback",
+            "persistence": "SQLite (append-only)",
+        }
+    )
 
 
 @app.route("/api/clear", methods=["POST"])

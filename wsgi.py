@@ -8,6 +8,6 @@ from server_ws import app
 # WSGI application
 application = app
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # For development only
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    app.run(host="0.0.0.0", port=5001, debug=False)

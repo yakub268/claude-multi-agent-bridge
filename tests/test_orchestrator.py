@@ -18,8 +18,7 @@ class TestMLOrchestrator:
     def test_trivial_task(self):
         """Test trivial task uses SINGLE_CLAUDE"""
         plan = self.orchestrator.create_plan(
-            "Fix typo in README.md",
-            {"file_count": 1, "loc": 50}
+            "Fix typo in README.md", {"file_count": 1, "loc": 50}
         )
 
         assert plan.strategy == CollabStrategy.SINGLE_CLAUDE
@@ -30,7 +29,7 @@ class TestMLOrchestrator:
         """Test medium task uses agents"""
         plan = self.orchestrator.create_plan(
             "Add user authentication with login and signup",
-            {"file_count": 8, "loc": 1200}
+            {"file_count": 8, "loc": 1200},
         )
 
         assert plan.strategy == CollabStrategy.AGENTS
@@ -40,22 +39,20 @@ class TestMLOrchestrator:
     def test_large_task_uses_bridge(self):
         """Test large task uses bridge"""
         plan = self.orchestrator.create_plan(
-            "Build REST API with 25 endpoints",
-            {"file_count": 25, "loc": 4000}
+            "Build REST API with 25 endpoints", {"file_count": 25, "loc": 4000}
         )
 
         assert plan.strategy in [
             CollabStrategy.BRIDGE_SMALL,
             CollabStrategy.BRIDGE_MEDIUM,
-            CollabStrategy.BRIDGE_LARGE
+            CollabStrategy.BRIDGE_LARGE,
         ]
         assert plan.num_claudes >= 2
 
     def test_model_selection_opus_for_complex(self):
         """Test Opus selected for complex coordinator tasks"""
         plan = self.orchestrator.create_plan(
-            "Build trading bot with 45 files",
-            {"file_count": 45, "loc": 8000}
+            "Build trading bot with 45 files", {"file_count": 45, "loc": 8000}
         )
 
         coordinator = next(r for r in plan.roles if r.role == "coordinator")
@@ -64,8 +61,7 @@ class TestMLOrchestrator:
     def test_model_selection_haiku_for_simple(self):
         """Test Haiku selected for simple tasks"""
         plan = self.orchestrator.create_plan(
-            "Add unit tests for 3 functions",
-            {"file_count": 3, "loc": 200}
+            "Add unit tests for 3 functions", {"file_count": 3, "loc": 200}
         )
 
         # Should have a tester role with Haiku
@@ -78,7 +74,7 @@ class TestMLOrchestrator:
         """Test planning mode enabled for large tasks"""
         plan = self.orchestrator.create_plan(
             "Build microservices architecture with 50 files",
-            {"file_count": 50, "loc": 10000}
+            {"file_count": 50, "loc": 10000},
         )
 
         coordinator = next(r for r in plan.roles if r.role == "coordinator")
@@ -87,8 +83,7 @@ class TestMLOrchestrator:
     def test_planning_mode_disabled_for_small_tasks(self):
         """Test planning mode disabled for small tasks"""
         plan = self.orchestrator.create_plan(
-            "Fix bug in login function",
-            {"file_count": 2, "loc": 100}
+            "Fix bug in login function", {"file_count": 2, "loc": 100}
         )
 
         coordinator = next(r for r in plan.roles if r.role == "coordinator")
@@ -97,8 +92,7 @@ class TestMLOrchestrator:
     def test_cost_estimation(self):
         """Test cost estimation is reasonable"""
         plan = self.orchestrator.create_plan(
-            "Build web app",
-            {"file_count": 20, "loc": 3000}
+            "Build web app", {"file_count": 20, "loc": 3000}
         )
 
         assert plan.estimated_cost_usd > 0
@@ -108,7 +102,7 @@ class TestMLOrchestrator:
         """Test reviewer assigned for code review needs"""
         plan = self.orchestrator.create_plan(
             "Implement critical payment processing system",
-            {"file_count": 15, "loc": 2500}
+            {"file_count": 15, "loc": 2500},
         )
 
         # Should have reviewer for critical systems
@@ -119,13 +113,12 @@ class TestMLOrchestrator:
     def test_reasoning_includes_model_selection(self):
         """Test reasoning output includes model selection"""
         plan = self.orchestrator.create_plan(
-            "Build complex system",
-            {"file_count": 30, "loc": 5000}
+            "Build complex system", {"file_count": 30, "loc": 5000}
         )
 
         assert "Model Selection:" in plan.reasoning
         assert plan.roles[0].model.value.upper() in plan.reasoning
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
