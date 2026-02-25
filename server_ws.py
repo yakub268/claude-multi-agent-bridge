@@ -815,13 +815,16 @@ def graceful_shutdown(signum, frame):
             except Exception as e:
                 logger.debug(f"Error closing room {room_id}: {e}")
 
-    # Close Redis connection
-    if redis_backend:
-        logger.info("Closing Redis connection...")
-        try:
-            redis_backend.close()
-        except Exception as e:
-            logger.debug(f"Error closing Redis: {e}")
+    # Close Redis connection (if configured)
+    try:
+        if 'redis_backend' in globals() and redis_backend:
+            logger.info("Closing Redis connection...")
+            try:
+                redis_backend.close()
+            except Exception as e:
+                logger.debug(f"Error closing Redis: {e}")
+    except NameError:
+        pass  # Redis not configured
 
     logger.info("✅ Shutdown complete")
     sys.exit(0)
