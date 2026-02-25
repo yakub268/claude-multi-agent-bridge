@@ -221,6 +221,9 @@ metrics_collector = MetricsCollector() if MONITORING_ENABLED else None
 token_auth = TokenAuth() if AUTH_ENABLED else None
 rate_limiter = RateLimiter() if AUTH_ENABLED else None
 
+# Redis backend (optional, initialized later if REDIS_HOST is configured)
+redis_backend = None
+
 
 # ============================================================================
 # WebSocket Handlers
@@ -816,15 +819,12 @@ def graceful_shutdown(signum, frame):
                 logger.debug(f"Error closing room {room_id}: {e}")
 
     # Close Redis connection (if configured)
-    try:
-        if 'redis_backend' in globals() and redis_backend:
-            logger.info("Closing Redis connection...")
-            try:
-                redis_backend.close()
-            except Exception as e:
-                logger.debug(f"Error closing Redis: {e}")
-    except NameError:
-        pass  # Redis not configured
+    if redis_backend:
+        logger.info("Closing Redis connection...")
+        try:
+            redis_backend.close()
+        except Exception as e:
+            logger.debug(f"Error closing Redis: {e}")
 
     logger.info("✅ Shutdown complete")
     sys.exit(0)
