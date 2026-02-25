@@ -15,8 +15,9 @@ backlog = 2048
 # For I/O-bound workloads (WebSockets, HTTP), use more workers than CPU-bound formula
 # CPU-bound: (2 * cpu_count) + 1
 # I/O-bound: (cpu_count * 4) + 1 (recommended for WebSocket/async workloads)
-workers = (multiprocessing.cpu_count() * 4) + 1
-worker_class = "gevent"  # Async worker for WebSockets
+workers = (multiprocessing.cpu_count() * 2) + 1
+worker_class = "gthread"  # Thread-based worker (compatible with flask_sock WebSockets)
+threads = 4
 worker_connections = 1000
 timeout = 120
 keepalive = 5
