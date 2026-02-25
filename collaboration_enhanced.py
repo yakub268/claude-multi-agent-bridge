@@ -1062,8 +1062,7 @@ class EnhancedCollaborationRoom:
 
         # Persist update
         if self.persistence:
-            # Update decision text in database
-            pass  # TODO: Add persistence method for amendment acceptance
+            self.persistence.update_decision_text(decision_id, amendment['text'])
 
         # Broadcast update
         self._broadcast_system_message(

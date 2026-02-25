@@ -355,6 +355,17 @@ class CollabPersistence:
         conn.commit()
         conn.close()
 
+    def update_decision_text(self, decision_id: str, new_text: str):
+        """Update decision text (for amendments)"""
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("""
+            UPDATE decisions
+            SET text = ?
+            WHERE id = ?
+        """, (new_text, decision_id))
+        conn.commit()
+        conn.close()
+
     # ========================================================================
     # File Operations
     # ========================================================================
