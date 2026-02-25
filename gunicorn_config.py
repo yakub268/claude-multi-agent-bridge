@@ -22,9 +22,9 @@ worker_connections = 1000
 timeout = 120
 keepalive = 5
 
-# Logging
-accesslog = "access.log"
-errorlog = "error.log"
+# Logging (use - for stdout/stderr to work correctly in Docker)
+accesslog = "-"
+errorlog = "-"
 loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
