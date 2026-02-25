@@ -1,4 +1,5 @@
 """Integration tests for the Claude Multi-Agent Bridge server."""
+
 import pytest
 import requests
 import os

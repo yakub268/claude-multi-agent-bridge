@@ -19,6 +19,9 @@ redis==5.0.1
 # Optional: Desktop client
 pyperclip==1.8.2
 
+# Cowork client — filesystem output detection
+watchdog>=3.0.0
+
 # Development
 pytest==8.0.2
 black==24.2.0
